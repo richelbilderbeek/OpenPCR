@@ -51,17 +51,6 @@ private:
   Thermocycler::ProgramState iLastState;
   unsigned long iLastReset;
   uint8_t iContrast;
-
-  static const int ms_lcd_ncols; //Number of columns of LCD display
-  static const int ms_lcd_nrows; //Number of rows of LCD display
-
-  static const int ms_pin_rs; //R/S pin, must be connected to pin  4 of LCD
-  static const int ms_pin_e ; //E   pin, must be connected to pin  6 of LCD
-  static const int ms_pin_d4; //D4  pin, must be connected to pin 11 of LCD
-  static const int ms_pin_d5; //D5  pin, must be connected to pin 12 of LCD
-  static const int ms_pin_d6; //D6  pin, must be connected to pin 13 of LCD
-  static const int ms_pin_d7; //D7  pin, must be connected to pin 14 of LCD
-  static const int ms_pin_v0; //V0  pin, must be connected to pin 3 of LCD
 };
 
 #endif

@@ -18,7 +18,7 @@
 
 #include "pcr_includes.h"
 #include "display.h"
-#include "assert.h"
+
 #include "thermocycler.h"
 #include "thermistors.h"
 #include "program.h"
@@ -26,51 +26,28 @@
 #define RESET_INTERVAL 30000 //ms
 
 //progmem strings
-const char HEATING_STR[] PROGMEM = "HeatCup";
-const char COOLING_STR[] PROGMEM = "CoolDwn";
-const char LIDWAIT_STR[] PROGMEM = "HeatLid";
-//const char STOPPED_STR[] PROGMEM = "Ready";
-const char RUN_COMPLETE_STR[] PROGMEM = "DONE!";
-const char OPENPCR_STR[] PROGMEM = "OpnPCR";
-const char POWERED_OFF_STR[] PROGMEM = "PwrOff";
-const char ETA_OVER_1000H_STR[] PROGMEM = "ETA:inf";
+const char HEATING_STR[] PROGMEM = "Heating";
+const char COOLING_STR[] PROGMEM = "Cooling";
+const char LIDWAIT_STR[] PROGMEM = "Heating Lid";
+const char STOPPED_STR[] PROGMEM = "Ready";
+const char RUN_COMPLETE_STR[] PROGMEM = "*** Run Complete ***";
+const char OPENPCR_STR[] PROGMEM = "OpenPCR";
+const char POWERED_OFF_STR[] PROGMEM = "Powered Off";
+const char ETA_OVER_1000H_STR[] PROGMEM = "ETA: >1000h";
 
-const char LID_FORM_STR[] PROGMEM = "Ld:%3dC"; //C
-const char CYCLE_FORM_STR[] PROGMEM = "%d/%d";
-const char ETA_HOURMIN_FORM_STR[] PROGMEM = "ETA:%d:%02d";
-const char ETA_SEC_FORM_STR[] PROGMEM = "ETA:%2ds";
+const char LID_FORM_STR[] PROGMEM = "Lid: %3d C";
+const char CYCLE_FORM_STR[] PROGMEM = "%d of %d";
+const char ETA_HOURMIN_FORM_STR[] PROGMEM = "ETA: %d:%02d";
+const char ETA_SEC_FORM_STR[] PROGMEM = "ETA:  %2ds";
 const char BLOCK_TEMP_FORM_STR[] PROGMEM = "%s C";
 const char STATE_FORM_STR[] PROGMEM = "%-13s";
-const char VERSION_FORM_STR[] PROGMEM = "v %s";
+const char VERSION_FORM_STR[] PROGMEM = "Firmware v%s";
 
+Display::Display():
+  iLcd(6, 7, 8, A5, 16, 17),
+  iLastState(Thermocycler::EStartup) {
 
-const int Display::ms_lcd_ncols = 8;
-const int Display::ms_lcd_nrows = 2;
-
-//OpenPCR defaults. Note: pin 16 and 17 don't exist!
-//iLcd(6, 7, 8, A5, 16, 17),
-const int Display::ms_pin_rs =  6 ; //Arduino pin that connects to R/S pin of LCD display
-const int Display::ms_pin_e  =  7; //Arduino pin that connects to E   pin of LCD display
-const int Display::ms_pin_d4 =  8; //Arduino pin that connects to D4  pin of LCD display
-const int Display::ms_pin_d5 =  A5; //Arduino pin that connects to D5  pin of LCD display
-const int Display::ms_pin_d6 =  A2; //Arduino pin that connects to D6  pin of LCD display
-const int Display::ms_pin_d7 =  A3; //Arduino pin that connects to D7  pin of LCD display
-
-const int Display::ms_pin_v0 =  5; //Arduino pin that connects to V0  pin of LCD display
-
-Display::Display()
-  : iLcd(
-      Display::ms_pin_rs,
-      ms_pin_e,
-      ms_pin_d4,
-      ms_pin_d5,
-      ms_pin_d6,
-      ms_pin_d7
-    ),
-    iLastState(Thermocycler::EStartup)
-{
-
-  iLcd.begin(ms_lcd_ncols, ms_lcd_nrows);
+  iLcd.begin(16, 1); //Adapted to electronics
   iLastReset = millis();
 #ifdef DEBUG_DISPLAY
   iszDebugMsg[0] = '\0';
@@ -78,108 +55,78 @@ Display::Display()
   
   // Set contrast
   iContrast = ProgramStore::RetrieveContrast();
-  analogWrite(ms_pin_v0, iContrast);
-
-  iLcd.clear();
-  //iLcd.setCursor(0,0);
-  //iLcd.print("Display");
-  //iLcd.setCursor(0,1);
-  //iLcd.print("  constructor");
-  //delay(10000);
+  analogWrite(5, iContrast);
 }
 
-void Display::Clear()
-{
+void Display::Clear() {
   iLastState = Thermocycler::EClear;
 }
 
-void Display::SetContrast(uint8_t contrast)
-{
+void Display::SetContrast(uint8_t contrast) {
   iContrast = contrast;
-  analogWrite(ms_pin_v0, iContrast);
-  iLcd.begin(ms_lcd_ncols,ms_lcd_nrows);
+  analogWrite(5, iContrast);
+  iLcd.begin(16, 1); //Adapted to electronics
 }
   
-void Display::SetDebugMsg(char* szDebugMsg)
-{
-  #ifdef DEBUG_DISPLAY
+void Display::SetDebugMsg(char* szDebugMsg) {
+#ifdef DEBUG_DISPLAY
   strcpy(iszDebugMsg, szDebugMsg);
-  #endif
+#endif
   iLcd.clear();
   Update();
 }
 
-void Display::Update()
-{
-  //Never reaches this
-  //static int cnt = 0;
-  //++cnt;
-  //iLcd.setCursor(0,0);
-  //iLcd.print("Update 1");
-
+void Display::Update() {
   char buf[16];
   
   Thermocycler::ProgramState state = GetThermocycler().GetProgramState();
   if (iLastState != state)
-  {
     iLcd.clear();
-    iLastState = state;
-  }
-  assert(state == iLastState);
-
-  //iLcd.setCursor(0,1);
-  //iLcd.print("Update 2");
-
+  iLastState = state;
+  
   // check for reset
-  if (millis() - iLastReset > RESET_INTERVAL)
-  {
-    iLcd.begin(ms_lcd_ncols,ms_lcd_nrows);
+  if (millis() - iLastReset > RESET_INTERVAL) {  
+    iLcd.begin(16, 1); //Adapted to electronics
     iLastReset = millis();
   }
   
-  switch (state)
-  {
+  switch (state) {
   case Thermocycler::ERunning:
   case Thermocycler::EComplete:
   case Thermocycler::ELidWait:
   case Thermocycler::EStopped:
-  {
-    iLcd.setCursor(0, 1 % ms_lcd_nrows);
-    #ifdef DEBUG_DISPLAY
+    iLcd.setCursor(0, 1);
+ #ifdef DEBUG_DISPLAY
     iLcd.print(iszDebugMsg);
-    #else
+ #else
     iLcd.print(GetThermocycler().GetProgName());
-    #endif
+ #endif
            
     DisplayLidTemp();
     DisplayBlockTemp();
     DisplayState();
 
-    if (state == Thermocycler::ERunning && !GetThermocycler().GetCurrentStep()->IsFinal())
-    {
+    if (state == Thermocycler::ERunning && !GetThermocycler().GetCurrentStep()->IsFinal()) {
       DisplayCycle();
       DisplayEta();
-    }
-    else if (state == Thermocycler::EComplete)
-    {
-      iLcd.setCursor(0, 3 % ms_lcd_nrows);
+    } else if (state == Thermocycler::EComplete) {
+      iLcd.setCursor(0, 3);
       iLcd.print(rps(RUN_COMPLETE_STR));
     }
-  }
-  break;
+    break;
+  
   case Thermocycler::EStartup:
-    iLcd.setCursor(0, 1);
+    iLcd.setCursor(6, 1);
     iLcd.print(rps(OPENPCR_STR));
 
-    iLcd.setCursor(0, 2 % ms_lcd_nrows);
-    sprintf_P(buf, VERSION_FORM_STR, OPENPCR_FIRMWARE_VERSION_STRING);
-    iLcd.print(buf);
-  break;
+      iLcd.setCursor(2, 2);
+      sprintf_P(buf, VERSION_FORM_STR, OPENPCR_FIRMWARE_VERSION_STRING);
+      iLcd.print(buf);
+    break;
   }
 }
 
-void Display::DisplayEta()
-{
+void Display::DisplayEta() {
   char timeString[16];
   unsigned long timeRemaining = GetThermocycler().GetTimeRemainingS();
   int hours = timeRemaining / 3600;
@@ -193,17 +140,15 @@ void Display::DisplayEta()
   else
     sprintf_P(timeString, ETA_SEC_FORM_STR, secs);
   
-  //iLcd.setCursor(20 - strlen(timeString), 3 % ms_lcd_nrows);
-  iLcd.setCursor(0, 2 % ms_lcd_nrows);
+  iLcd.setCursor(20 - strlen(timeString), 3);
   iLcd.print(timeString);
 }
 
-void Display::DisplayLidTemp()
-{
+void Display::DisplayLidTemp() {
   char buf[16];
   sprintf_P(buf, LID_FORM_STR, (int)(GetThermocycler().GetLidTemp() + 0.5));
-  //iLcd.setCursor(10, 2 % ms_lcd_nrows);
-  iLcd.setCursor(0, 2 % ms_lcd_nrows);
+
+  iLcd.setCursor(10, 2);
   iLcd.print(buf);
 }
 
@@ -213,23 +158,20 @@ void Display::DisplayBlockTemp() {
   
   sprintFloat(floatStr, GetThermocycler().GetPlateTemp(), 1, true);
   sprintf_P(buf, BLOCK_TEMP_FORM_STR, floatStr);
-  //iLcd.setCursor(13, 0 % ms_lcd_nrows);
-  iLcd.setCursor(0, 1 % ms_lcd_nrows);
+ 
+  iLcd.setCursor(13, 0);
   iLcd.print(buf);
 }
 
-void Display::DisplayCycle()
-{
+void Display::DisplayCycle() {
   char buf[16];
   
-  iLcd.setCursor(0, 3 % ms_lcd_nrows);
+  iLcd.setCursor(0, 3);
   sprintf_P(buf, CYCLE_FORM_STR, GetThermocycler().GetCurrentCycleNum(), GetThermocycler().GetNumCycles());
   iLcd.print(buf);
 }
 
-void Display::DisplayState()
-{
-  /*
+void Display::DisplayState() {
   char buf[32];
   char* stateStr;
   
@@ -261,8 +203,7 @@ void Display::DisplayState()
     break;
   }
   
-  iLcd.setCursor(0, 1 % ms_lcd_nrows);
+  iLcd.setCursor(0, 0);
   sprintf_P(buf, STATE_FORM_STR, stateStr);
   iLcd.print(buf);
-  */
 }

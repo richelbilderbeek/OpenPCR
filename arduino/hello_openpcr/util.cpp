@@ -92,10 +92,9 @@ unsigned short htons(unsigned short val) {
   return val << 8 + (byte)val;
 }
 
-double absf(const double val)
-{
+double absf(double val) {
   if (val < 0)
-    return val * -1.0;
+    return val * -1;
   else
     return val;
 }
@@ -105,3 +104,5 @@ char* rps(const char* progString) {
   strcpy_P(buf, progString);
   return buf;
 }
+
+

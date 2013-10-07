@@ -104,7 +104,7 @@ Thermocycler::Thermocycler(boolean restarted):
   pinMode(4, OUTPUT);
   pinMode(5, OUTPUT);
   
-    // SPCR = 01010000
+  // SPCR = 01010000
   //interrupt disabled,spi enabled,msb 1st,master,clk low when idle,
   //sample on leading edge of clk,system clock/4 rate (fastest)
   int clr;
@@ -191,11 +191,9 @@ PcrStatus Thermocycler::Start() {
 }
     
 // internal
-void Thermocycler::Loop()
-{
-  switch (iProgramState)
-  {
-    case EStartup:
+void Thermocycler::Loop() {
+  switch (iProgramState) {
+  case EStartup:
     if (millis() > STARTUP_DELAY) {
       iProgramState = EStopped;
       

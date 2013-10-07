@@ -11,3 +11,5 @@
 *.s
 .dep
 usb/default
+/build-openpcr-*
+*.pro.user

@@ -153,7 +153,7 @@ void CommandParser::AddComponent(SCommand* pCommand, char key, char* szValue) {
 Cycle* CommandParser::ParseProgram(char* pBuffer) {
   Cycle* pProgram = gpThermocycler->GetCyclePool().AllocateComponent();
   pProgram->SetNumCycles(1);
-
+	
   char* pCycBuf = strtok(pBuffer, "()");
   while (pCycBuf != NULL) {
     pProgram->AddComponent(ParseCycle(pCycBuf));
@@ -165,10 +165,10 @@ Cycle* CommandParser::ParseProgram(char* pBuffer) {
 
 ProgramComponent* CommandParser::ParseCycle(char* pBuffer) {
   char countBuf[5];
-
+	
   //find first step
   char* pStep = strchr(pBuffer, '[');
-
+	
   //get cycle count
   int countLen = pStep - pBuffer;
   strncpy(countBuf, pBuffer, countLen);
@@ -177,7 +177,7 @@ ProgramComponent* CommandParser::ParseCycle(char* pBuffer) {
   
   Cycle* pCycle = gpThermocycler->GetCyclePool().AllocateComponent();
   pCycle->SetNumCycles(cycCount);
-
+	
   //add steps
   while (pStep != NULL) {
     *pStep++ = '\0';
@@ -211,7 +211,7 @@ Step* CommandParser::ParseStep(char* pBuffer) {
     pEnd = strchr(pName, '|');
   }
   *pEnd = '\0';
-
+	
   unsigned long stepDuration = atol(pBuffer);
   unsigned long rampDuration = pRampDuration == NULL ? 0 : atol(pRampDuration);
   float temp = atof(pTemp);
