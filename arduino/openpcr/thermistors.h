@@ -27,6 +27,8 @@ public:
   
 private:
   double iTemp;
+
+  static const int ms_pin_lid_thermistor;
 };
 
 class CPlateThermistor {
@@ -39,6 +41,7 @@ private:
    
 private:
   double iTemp;
+  static const int ms_pin_plate_thermistor;
 };
 
 #endif

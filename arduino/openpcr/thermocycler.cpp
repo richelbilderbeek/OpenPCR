@@ -69,6 +69,10 @@
 
 #define STARTUP_DELAY 4000
 
+const int Thermocycler::ms_pin_peltier_a = 2;
+const int Thermocycler::ms_pin_heater_lid = 3;
+const int Thermocycler::ms_pin_peltier_b = 4;
+const int Thermocycler::ms_pin_block_thermistor = A4;
 //pid parameters
 const SPIDTuning LID_PID_GAIN_SCHEDULE[] = {
   //maxTemp, kP, kI, kD
@@ -92,17 +96,17 @@ Thermocycler::Thermocycler(boolean restarted):
   iRamping(true),
   iPlatePid(&iPlateThermistor.GetTemp(), &iPeltierPwm, &iTargetPlateTemp, PLATE_PID_INC_NORM_P, PLATE_PID_INC_NORM_I, PLATE_PID_INC_NORM_D, DIRECT),
   iLidPid(LID_PID_GAIN_SCHEDULE, MIN_LID_PWM, MAX_LID_PWM),
-  iTargetLidTemp(0) {
-    
+  iTargetLidTemp(0)
+{
   ipDisplay = new Display();
   ipSerialControl = new SerialControl(ipDisplay);
   
   //init pins
-  pinMode(15, INPUT);
-  pinMode(2, OUTPUT);
-  pinMode(3, OUTPUT);
-  pinMode(4, OUTPUT);
-  pinMode(5, OUTPUT);
+  //pinMode(15, INPUT); //NEVER USED
+  //pinMode(2, OUTPUT); //NEVER USED
+  //pinMode(3, OUTPUT); //NEVER USED
+  //pinMode(4, OUTPUT); //NEVER USED
+  //pinMode(5, OUTPUT); //NEVER USED
   
     // SPCR = 01010000
   //interrupt disabled,spi enabled,msb 1st,master,clk low when idle,
@@ -124,15 +128,32 @@ Thermocycler::Thermocycler(boolean restarted):
   TCCR2B = _BV(CS22);
 
   iszProgName[0] = '\0';
+
+  Step * const step = new Step;
+  step->SetName("StapEen");
+  step->SetTemp(950.0);
+  step->SetRampDurationS(10);
+  step->SetStepDurationS(20);
+  Cycle * const program = new Cycle;
+  program->AddComponent(step);
+  program->SetNumCycles(100);
+  Cycle * const display_cycle = new Cycle;
+  display_cycle->SetNumCycles(100);
+  const char * const program_name = "BurnBurnBurn!";
+  const int lid_temperature = 950;
+  this->SetProgram(program,display_cycle,program_name,lid_temperature);
+
 }
 
-Thermocycler::~Thermocycler() {
+Thermocycler::~Thermocycler()
+{
   delete ipSerialControl;
   delete ipDisplay;
 }
 
 // accessors
-int Thermocycler::GetNumCycles() {
+int Thermocycler::GetNumCycles()
+{
   return ipDisplayCycle->GetNumCycles();
 }
 
@@ -383,7 +404,7 @@ void Thermocycler::ControlLid() {
   if (iProgramState == ERunning || iProgramState == ELidWait)
     drive = iLidPid.Compute(iTargetLidTemp, GetLidTemp());
  
-  analogWrite(3, drive);
+  analogWrite(ms_pin_heater_lid, drive);
 }
 
 //PreprocessProgram initializes ETA parameters and validates/modifies ramp conditions
@@ -440,18 +461,23 @@ void Thermocycler::UpdateEta() {
 }
 
 void Thermocycler::SetPeltier(ThermalDirection dir, int pwm) {
-  if (dir == COOL) {
-    digitalWrite(2, HIGH);
-    digitalWrite(4, LOW);
-  } else if (dir == HEAT) {
-    digitalWrite(2, LOW);
-    digitalWrite(4, HIGH);
-  } else {
-    digitalWrite(2, LOW);
-    digitalWrite(4, LOW);
+  if (dir == COOL)
+  {
+    digitalWrite(ms_pin_peltier_a, HIGH);
+    digitalWrite(ms_pin_peltier_b, LOW);
+  }
+  else if (dir == HEAT)
+  {
+    digitalWrite(ms_pin_peltier_a, LOW);
+    digitalWrite(ms_pin_peltier_b, HIGH);
+  }
+  else
+  {
+    digitalWrite(ms_pin_peltier_a, LOW);
+    digitalWrite(ms_pin_peltier_b, LOW);
   }
   
-  analogWrite(9, pwm);
+  analogWrite(ms_pin_block_thermistor, pwm); //was pin 9
 }
 
 void Thermocycler::ProcessCommand(SCommand& command) {

@@ -29,31 +29,29 @@ public:
     EStep = 0,
     ECycle
   };
-  
+  virtual ~ProgramComponent() {}
   virtual void Reset() = 0;
-  virtual TType GetType() = 0;
+  virtual TType GetType() const = 0;
   
   // iteration
   virtual void BeginIteration() = 0;
   virtual Step* GetNextStep() = 0;
 };
 
-////////////////////////////////////////////////////////////////////
-// Class Step
-class Step: public ProgramComponent {
-public:  
+struct Step : public ProgramComponent
+{
   // accessors
   char* GetName() { return iName; }
-  unsigned int GetStepDurationS() { return iStepDurationS; }
-  unsigned long GetRampDurationS() { return iRampDurationS; }
-  float GetTemp() { return iTemp; }
-  virtual TType GetType() { return EStep; }
-  boolean IsFinal() { return iStepDurationS == 0; }
+  unsigned int GetStepDurationS() const { return iStepDurationS; }
+  unsigned long GetRampDurationS() const { return iRampDurationS; }
+  float GetTemp() const { return iTemp; }
+  virtual TType GetType() const { return EStep; }
+  boolean IsFinal() const { return iStepDurationS == 0; }
 
   // mutators
-  void SetStepDurationS(unsigned long stepDurationS) { iStepDurationS = stepDurationS; }
-  void SetRampDurationS(unsigned long rampDurationS) { iRampDurationS = rampDurationS; }
-  void SetTemp(float temp) { iTemp = temp; }
+  void SetStepDurationS(const unsigned long stepDurationS) { iStepDurationS = stepDurationS; }
+  void SetRampDurationS(const unsigned long rampDurationS) { iRampDurationS = rampDurationS; }
+  void SetTemp(const float temp) { iTemp = temp; }
   void SetName(const char* szName);
   
   virtual void Reset();
@@ -75,10 +73,10 @@ private:
 class Cycle: public ProgramComponent {
 public:
   // accessors
-  virtual TType GetType() { return ECycle; }
-  int GetCurrentCycle() { return iCurrentCycle + 1; } //add 1 because cycles start at 0
-  int GetNumCycles() { return iNumCycles; }
-  int GetNumComponents() { return iNumComponents; }
+  virtual TType GetType() const { return ECycle; }
+  int GetCurrentCycle() const { return iCurrentCycle + 1; } //add 1 because cycles start at 0
+  int GetNumCycles() const { return iNumCycles; }
+  int GetNumComponents() const { return iNumComponents; }
   ProgramComponent* GetComponent(int index);
   
   // mutators
@@ -125,8 +123,6 @@ private:
   T iComponents[N];
 };
 
-////////////////////////////////////////////////////////////////////
-// Struct SCommand
 struct SCommand {
   char name[21];
   uint16_t commandId;
@@ -141,9 +137,8 @@ struct SCommand {
   Cycle* pProgram;
 };
 
-////////////////////////////////////////////////////////////////////
-// Class CommandParser
-class CommandParser {
+class CommandParser
+{
 public:
   static void ParseCommand(SCommand& command, char* pCommandBuf);
 
@@ -154,15 +149,11 @@ private:
   static Step* ParseStep(char* pBuffer);
 };
 
-////////////////////////////////////////////////////////////////////
-// Class ProgramStore
-class ProgramStore {
-public:
-  //reading
+struct ProgramStore
+{
   static uint8_t RetrieveContrast();
   static boolean RetrieveProgram(SCommand& command, char* pBuffer);
 
-  //writing
   static void StoreContrast(uint8_t contrast);
   static void StoreProgram(const char* szProgram);
 };

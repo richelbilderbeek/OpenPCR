@@ -104,8 +104,6 @@ void Cycle::RestartCycle() {
     iComponents[i]->BeginIteration();
 }
 
-////////////////////////////////////////////////////////////////////
-// Class CommandParser
 void CommandParser::ParseCommand(SCommand& command, char* pCommandBuf) {
   char* pValue;
   memset(&command, NULL, sizeof(command));
@@ -150,7 +148,8 @@ void CommandParser::AddComponent(SCommand* pCommand, char key, char* szValue) {
   }
 }
 
-Cycle* CommandParser::ParseProgram(char* pBuffer) {
+Cycle* CommandParser::ParseProgram(char* pBuffer)
+{
   Cycle* pProgram = gpThermocycler->GetCyclePool().AllocateComponent();
   pProgram->SetNumCycles(1);
 

@@ -30,7 +30,7 @@ public:
   CPIDController(const SPIDTuning* pGainSchedule, int minOutput, int maxOutput);
  
   //accessors
-  double GetIntegrator() { return iIntegrator; }
+  double GetIntegrator() const { return iIntegrator; }
  
   //computation
   double Compute(double target, double currentValue);

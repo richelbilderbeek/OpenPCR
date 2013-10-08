@@ -150,6 +150,12 @@ private:
   unsigned long iRampStartTime;
   unsigned long iEstimatedTimeRemainingS;
   boolean iHasCooled;
+
+  static const int ms_pin_peltier_a;
+  static const int ms_pin_peltier_b;
+  static const int ms_pin_heater_lid;
+  static const int ms_pin_block_thermistor;
+
 };
 
 #endif

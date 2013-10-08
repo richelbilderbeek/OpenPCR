@@ -54,11 +54,13 @@ PROGMEM const unsigned long PLATE_RESISTANCE_TABLE[] = {
   6591, 6403, 6222, 6046, 5876 };
   
 //spi
-#define DATAOUT 11//MOSI
-#define DATAIN  12//MISO 
-#define SPICLOCK  13//sck
+//const int DATAOUT = 11; //MOSI, NEVER USED
+//#define DATAIN  12//MISO //ms_pin_plate_thermistor
+const int CPlateThermistor::ms_pin_plate_thermistor = A4;
+//const int SPICLOCK  = 13; //sck, NEVER USED
 #define SLAVESELECT 10//ss
 
+const int CLidThermistor::ms_pin_lid_thermistor = A1;
 //------------------------------------------------------------------------------
 float TableLookup(const unsigned long lookupTable[], unsigned int tableSize, int startValue, unsigned long searchValue) {
   //simple linear search for now
@@ -101,7 +103,7 @@ CLidThermistor::CLidThermistor():
 }
 //------------------------------------------------------------------------------
 void CLidThermistor::ReadTemp() {
-  unsigned long voltage_mv = (unsigned long)analogRead(1) * 5000 / 1024;
+  unsigned long voltage_mv = (unsigned long)analogRead(ms_pin_lid_thermistor) * 5000 / 1024;
   unsigned long resistance = voltage_mv * 2200 / (5000 - voltage_mv);
   
   iTemp = TableLookup(LID_RESISTANCE_TABLE, sizeof(LID_RESISTANCE_TABLE) / sizeof(LID_RESISTANCE_TABLE[0]), 0, resistance);
@@ -113,9 +115,9 @@ CPlateThermistor::CPlateThermistor():
   iTemp(0.0) {
 
   //spi setup
-  pinMode(DATAOUT, OUTPUT);
-  pinMode(DATAIN, INPUT);
-  pinMode(SPICLOCK,OUTPUT);
+  //pinMode(DATAOUT, OUTPUT); //Never used
+  pinMode(ms_pin_plate_thermistor, INPUT);
+  //pinMode(SPICLOCK,OUTPUT);
   pinMode(SLAVESELECT,OUTPUT);
   digitalWrite(SLAVESELECT,HIGH); //disable device 
 }
@@ -124,7 +126,7 @@ void CPlateThermistor::ReadTemp() {
   digitalWrite(SLAVESELECT, LOW);
 
   //read data
-  while(digitalRead(DATAIN)) {}
+  while(digitalRead(ms_pin_plate_thermistor)) {}
   
   uint8_t spiBuf[4];
   memset(spiBuf, 0, sizeof(spiBuf));

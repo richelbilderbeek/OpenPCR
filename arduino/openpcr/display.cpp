@@ -26,26 +26,26 @@
 #define RESET_INTERVAL 30000 //ms
 
 //progmem strings
-const char HEATING_STR[] PROGMEM = "HeatCup";
-const char COOLING_STR[] PROGMEM = "CoolDwn";
-const char LIDWAIT_STR[] PROGMEM = "HeatLid";
-//const char STOPPED_STR[] PROGMEM = "Ready";
-const char RUN_COMPLETE_STR[] PROGMEM = "DONE!";
-const char OPENPCR_STR[] PROGMEM = "OpnPCR";
-const char POWERED_OFF_STR[] PROGMEM = "PwrOff";
-const char ETA_OVER_1000H_STR[] PROGMEM = "ETA:inf";
+const char HEATING_STR[] PROGMEM = "Heating";
+const char COOLING_STR[] PROGMEM = "Cooling";
+const char LIDWAIT_STR[] PROGMEM = "Heating Lid";
+const char STOPPED_STR[] PROGMEM = "Ready";
+const char RUN_COMPLETE_STR[] PROGMEM = "*** Run Complete ***";
+const char OPENPCR_STR[] PROGMEM = "OpenPCR";
+const char POWERED_OFF_STR[] PROGMEM = "Powered Off";
+const char ETA_OVER_1000H_STR[] PROGMEM = "ETA: >1000h";
 
-const char LID_FORM_STR[] PROGMEM = "Ld:%3dC"; //C
-const char CYCLE_FORM_STR[] PROGMEM = "%d/%d";
-const char ETA_HOURMIN_FORM_STR[] PROGMEM = "ETA:%d:%02d";
-const char ETA_SEC_FORM_STR[] PROGMEM = "ETA:%2ds";
+const char LID_FORM_STR[] PROGMEM = "Lid: %3d C";
+const char CYCLE_FORM_STR[] PROGMEM = "%d of %d";
+const char ETA_HOURMIN_FORM_STR[] PROGMEM = "ETA: %d:%02d";
+const char ETA_SEC_FORM_STR[] PROGMEM = "ETA: %2ds";
 const char BLOCK_TEMP_FORM_STR[] PROGMEM = "%s C";
 const char STATE_FORM_STR[] PROGMEM = "%-13s";
-const char VERSION_FORM_STR[] PROGMEM = "v %s";
+const char VERSION_FORM_STR[] PROGMEM = "Firmware v%s";
 
 
-const int Display::ms_lcd_ncols = 8;
-const int Display::ms_lcd_nrows = 2;
+const int Display::ms_lcd_ncols = 20;
+const int Display::ms_lcd_nrows = 4;
 
 //OpenPCR defaults. Note: pin 16 and 17 don't exist!
 //iLcd(6, 7, 8, A5, 16, 17),
@@ -69,7 +69,7 @@ Display::Display()
     ),
     iLastState(Thermocycler::EStartup)
 {
-
+  iLcd.clear();
   iLcd.begin(ms_lcd_ncols, ms_lcd_nrows);
   iLastReset = millis();
 #ifdef DEBUG_DISPLAY
@@ -81,11 +81,6 @@ Display::Display()
   analogWrite(ms_pin_v0, iContrast);
 
   iLcd.clear();
-  //iLcd.setCursor(0,0);
-  //iLcd.print("Display");
-  //iLcd.setCursor(0,1);
-  //iLcd.print("  constructor");
-  //delay(10000);
 }
 
 void Display::Clear()
@@ -168,10 +163,10 @@ void Display::Update()
   }
   break;
   case Thermocycler::EStartup:
-    iLcd.setCursor(0, 1);
+    iLcd.setCursor(6, 1);
     iLcd.print(rps(OPENPCR_STR));
 
-    iLcd.setCursor(0, 2 % ms_lcd_nrows);
+    iLcd.setCursor(2, 2 % ms_lcd_nrows);
     sprintf_P(buf, VERSION_FORM_STR, OPENPCR_FIRMWARE_VERSION_STRING);
     iLcd.print(buf);
   break;
@@ -193,8 +188,7 @@ void Display::DisplayEta()
   else
     sprintf_P(timeString, ETA_SEC_FORM_STR, secs);
   
-  //iLcd.setCursor(20 - strlen(timeString), 3 % ms_lcd_nrows);
-  iLcd.setCursor(0, 2 % ms_lcd_nrows);
+  iLcd.setCursor(20 - strlen(timeString), 3 % ms_lcd_nrows);
   iLcd.print(timeString);
 }
 
@@ -203,7 +197,7 @@ void Display::DisplayLidTemp()
   char buf[16];
   sprintf_P(buf, LID_FORM_STR, (int)(GetThermocycler().GetLidTemp() + 0.5));
   //iLcd.setCursor(10, 2 % ms_lcd_nrows);
-  iLcd.setCursor(0, 2 % ms_lcd_nrows);
+  iLcd.setCursor(10, 2 % ms_lcd_nrows);
   iLcd.print(buf);
 }
 
@@ -214,7 +208,7 @@ void Display::DisplayBlockTemp() {
   sprintFloat(floatStr, GetThermocycler().GetPlateTemp(), 1, true);
   sprintf_P(buf, BLOCK_TEMP_FORM_STR, floatStr);
   //iLcd.setCursor(13, 0 % ms_lcd_nrows);
-  iLcd.setCursor(0, 1 % ms_lcd_nrows);
+  iLcd.setCursor(13, 0 % ms_lcd_nrows);
   iLcd.print(buf);
 }
 
@@ -229,7 +223,6 @@ void Display::DisplayCycle()
 
 void Display::DisplayState()
 {
-  /*
   char buf[32];
   char* stateStr;
   
@@ -261,8 +254,7 @@ void Display::DisplayState()
     break;
   }
   
-  iLcd.setCursor(0, 1 % ms_lcd_nrows);
+  iLcd.setCursor(0, 0 % ms_lcd_nrows);
   sprintf_P(buf, STATE_FORM_STR, stateStr);
   iLcd.print(buf);
-  */
 }
