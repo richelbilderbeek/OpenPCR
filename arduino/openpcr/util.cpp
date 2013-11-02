@@ -20,8 +20,11 @@
 #include "thermocycler.h"
 #include "display.h"
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wattributes"
 const char FLOAT_PAD_FORM_STR[] PROGMEM = "%3d.%d";
 const char FLOAT_FORM_STR[] PROGMEM = "%d.%d";
+#pragma GCC diagnostic pop
 
 void sprintFloat(char* str, float val, int decimalDigits, boolean pad) {
   long factor = pow(10, decimalDigits);
@@ -89,7 +92,7 @@ void operator delete(void * ptr) {
 void __cxa_pure_virtual(void) {};
 
 unsigned short htons(unsigned short val) {
-  return val << 8 + (byte)val;
+  return val << (8 + (byte)val);
 }
 
 double absf(const double val)

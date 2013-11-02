@@ -21,23 +21,36 @@
 
 #include <LiquidCrystal.h>
 #include "thermocycler.h"
+#include "displayparameters.h"
 
 class Cycle;
 
 ///The one-line sixteen character display
+///Index       |0|1|2     |3|4               |5|6|7|8|9|0|1|2|3|4|5|
+///Display     |9|9|degree|C|up or down arrow| |9|8|/|9|9| |9|:|5|9|
+///Description |Current     |Heating/cooling | Steps left  | Time  |
+///            |temperature |                |             | left  |
 struct Display
 {
-  Display();
+  Display(
+    const DisplayParameters& parameters
+    );
   
-  //accessotrs
-  uint8_t GetContrast() { return iContrast; }
-  
-  void SetContrast(uint8_t contrast);
   void Clear();
+  int GetContrast() const { return m_contrast; }
+  void SetContrast(const int contrast);
   void SetDebugMsg(char* szDebugMsg);
   void Update();
   
 private:
+  void ShowAll(
+    const int current_temperature,
+    const bool is_heating,
+    const int current_step,
+    const int number_of_steps,
+    const int minutes_left
+  );
+
   void DisplayEta();
   void DisplayLidTemp();
   void DisplayBlockTemp();
@@ -45,24 +58,11 @@ private:
   void DisplayState();
   
 private:
-  LiquidCrystal iLcd;
-#ifdef DEBUG_DISPLAY
-  char iszDebugMsg[21];
-#endif
-  Thermocycler::ProgramState iLastState;
-  unsigned long iLastReset;
-  uint8_t iContrast;
-
-  static const int ms_lcd_ncols; //Number of columns of LCD display
-  static const int ms_lcd_nrows; //Number of rows of LCD display
-
-  static const int ms_pin_rs; //R/S pin, must be connected to pin  4 of LCD
-  static const int ms_pin_e ; //E   pin, must be connected to pin  6 of LCD
-  static const int ms_pin_d4; //D4  pin, must be connected to pin 11 of LCD
-  static const int ms_pin_d5; //D5  pin, must be connected to pin 12 of LCD
-  static const int ms_pin_d6; //D6  pin, must be connected to pin 13 of LCD
-  static const int ms_pin_d7; //D7  pin, must be connected to pin 14 of LCD
-  static const int ms_pin_v0; //V0  pin, must be connected to pin 3 of LCD
+  int m_contrast;
+  LiquidCrystal m_lcd;
+  const DisplayParameters m_parameters;
+  int m_prev_reset;
+  Thermocycler::ProgramState m_prev_state;
 };
 
 #endif

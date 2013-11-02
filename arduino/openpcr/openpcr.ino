@@ -46,10 +46,24 @@ void setup() {
   const int pin_lid_thermistor = A1;
   const int pin_plate_thermistor = A4;
 
+  const DisplayParameyers display_parameters(
+    16, //lcd_ncols
+    1,  //lcd_nrows ;
+    6,  //lcd_pin_rs =  Arduino pin that connects to R/S pin of LCD display
+    7,  //lcd_pin_e  =  Arduino pin that connects to E   pin of LCD display
+    8,  //lcd_pin_d4 =  Arduino pin that connects to D4  pin of LCD display
+    A5, //lcd_pin_d5 =  Arduino pin that connects to D5  pin of LCD display
+    A2, //lcd_pin_d6 =  Arduino pin that connects to D6  pin of LCD display
+    A3, //lcd_pin_d7 =  Arduino pin that connects to D7  pin of LCD display
+    5   //lcd_pin_v0 =  Arduino pin that connects to V0  pin of LCD display
+  );
+
   gpThermocycler = new Thermocycler(
     restarted,
     pin_lid_thermistor,
-    pin_plate_thermistor);
+    pin_plate_thermistor,
+    display_parameters
+  );
 }
 
 void loop() {

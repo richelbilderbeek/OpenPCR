@@ -43,10 +43,6 @@ const char BLOCK_TEMP_FORM_STR[] PROGMEM = "%s C";
 const char STATE_FORM_STR[] PROGMEM = "%-13s";
 const char VERSION_FORM_STR[] PROGMEM = "Firmware v%s";
 
-
-const int Display::ms_lcd_ncols = 20;
-const int Display::ms_lcd_nrows = 4;
-
 //OpenPCR defaults. Note: pin 16 and 17 don't exist!
 //iLcd(6, 7, 8, A5, 16, 17),
 const int Display::ms_pin_rs =  6 ; //Arduino pin that connects to R/S pin of LCD display
@@ -55,44 +51,40 @@ const int Display::ms_pin_d4 =  8; //Arduino pin that connects to D4  pin of LCD
 const int Display::ms_pin_d5 =  A5; //Arduino pin that connects to D5  pin of LCD display
 const int Display::ms_pin_d6 =  A2; //Arduino pin that connects to D6  pin of LCD display
 const int Display::ms_pin_d7 =  A3; //Arduino pin that connects to D7  pin of LCD display
-
 const int Display::ms_pin_v0 =  5; //Arduino pin that connects to V0  pin of LCD display
 
-Display::Display()
-  : iLcd(
-      Display::ms_pin_rs,
-      ms_pin_e,
-      ms_pin_d4,
-      ms_pin_d5,
-      ms_pin_d6,
-      ms_pin_d7
+Display::Display(
+    const DisplayParameters& parameters
+  )
+  :
+    m_contrast(ProgramStore::RetrieveContrast()),
+    m_lcd(
+      parameters.m_pin_rs,
+      parameters.m_pin_e,
+      parameters.m_pin_d4,
+      parameters.m_pin_d5,
+      parameters.m_pin_d6,
+      parameters.m_pin_d7
     ),
-    iLastState(Thermocycler::EStartup)
+    m_parameters(parameters),
+    m_prev_reset(millis()),
+    m_prev_state(Thermocycler::EStartup)
 {
-  iLcd.clear();
-  iLcd.begin(ms_lcd_ncols, ms_lcd_nrows);
-  iLastReset = millis();
-#ifdef DEBUG_DISPLAY
-  iszDebugMsg[0] = '\0';
-#endif
-  
-  // Set contrast
-  iContrast = ProgramStore::RetrieveContrast();
-  analogWrite(ms_pin_v0, iContrast);
-
-  iLcd.clear();
+  m_lcd.clear();
+  m_lcd.begin(ms_lcd_ncols, ms_lcd_nrows);
+  analogWrite(ms_pin_v0, m_contrast);
 }
 
 void Display::Clear()
 {
-  iLastState = Thermocycler::EClear;
+  m_prev_state = Thermocycler::EClear;
 }
 
-void Display::SetContrast(uint8_t contrast)
+void Display::SetContrast(const int contrast)
 {
-  iContrast = contrast;
-  analogWrite(ms_pin_v0, iContrast);
-  iLcd.begin(ms_lcd_ncols,ms_lcd_nrows);
+  m_contrast = contrast;
+  analogWrite(ms_pin_v0, m_contrast);
+  //m_lcd.begin(ms_lcd_ncols,ms_lcd_nrows);
 }
   
 void Display::SetDebugMsg(char* szDebugMsg)
@@ -100,7 +92,7 @@ void Display::SetDebugMsg(char* szDebugMsg)
   #ifdef DEBUG_DISPLAY
   strcpy(iszDebugMsg, szDebugMsg);
   #endif
-  iLcd.clear();
+  m_lcd.clear();
   Update();
 }
 
@@ -115,21 +107,21 @@ void Display::Update()
   char buf[16];
   
   Thermocycler::ProgramState state = GetThermocycler().GetProgramState();
-  if (iLastState != state)
+  if (m_prev_state != state)
   {
-    iLcd.clear();
-    iLastState = state;
+    m_lcd.clear();
+    m_prev_state = state;
   }
-  assert(state == iLastState);
+  assert(state == m_prev_state);
 
   //iLcd.setCursor(0,1);
   //iLcd.print("Update 2");
 
   // check for reset
-  if (millis() - iLastReset > RESET_INTERVAL)
+  if (millis() - m_prev_reset > RESET_INTERVAL)
   {
-    iLcd.begin(ms_lcd_ncols,ms_lcd_nrows);
-    iLastReset = millis();
+    m_lcd.begin(ms_lcd_ncols,ms_lcd_nrows);
+    m_prev_reset = millis();
   }
   
   switch (state)
@@ -139,11 +131,11 @@ void Display::Update()
   case Thermocycler::ELidWait:
   case Thermocycler::EStopped:
   {
-    iLcd.setCursor(0, 1 % ms_lcd_nrows);
+    m_lcd.setCursor(0, 1 % ms_lcd_nrows);
     #ifdef DEBUG_DISPLAY
     iLcd.print(iszDebugMsg);
     #else
-    iLcd.print(GetThermocycler().GetProgName());
+    m_lcd.print(GetThermocycler().GetProgName());
     #endif
            
     DisplayLidTemp();
@@ -157,18 +149,18 @@ void Display::Update()
     }
     else if (state == Thermocycler::EComplete)
     {
-      iLcd.setCursor(0, 3 % ms_lcd_nrows);
-      iLcd.print(rps(RUN_COMPLETE_STR));
+      m_lcd.setCursor(0, 3 % ms_lcd_nrows);
+      m_lcd.print(rps(RUN_COMPLETE_STR));
     }
   }
   break;
   case Thermocycler::EStartup:
-    iLcd.setCursor(6, 1);
-    iLcd.print(rps(OPENPCR_STR));
+    m_lcd.setCursor(6, 1);
+    m_lcd.print(rps(OPENPCR_STR));
 
-    iLcd.setCursor(2, 2 % ms_lcd_nrows);
+    m_lcd.setCursor(2, 2 % ms_lcd_nrows);
     sprintf_P(buf, VERSION_FORM_STR, OPENPCR_FIRMWARE_VERSION_STRING);
-    iLcd.print(buf);
+    m_lcd.print(buf);
   break;
   }
 }
@@ -188,8 +180,8 @@ void Display::DisplayEta()
   else
     sprintf_P(timeString, ETA_SEC_FORM_STR, secs);
   
-  iLcd.setCursor(20 - strlen(timeString), 3 % ms_lcd_nrows);
-  iLcd.print(timeString);
+  m_lcd.setCursor(20 - strlen(timeString), 3 % ms_lcd_nrows);
+  m_lcd.print(timeString);
 }
 
 void Display::DisplayLidTemp()
@@ -197,8 +189,8 @@ void Display::DisplayLidTemp()
   char buf[16];
   sprintf_P(buf, LID_FORM_STR, (int)(GetThermocycler().GetLidTemp() + 0.5));
   //iLcd.setCursor(10, 2 % ms_lcd_nrows);
-  iLcd.setCursor(10, 2 % ms_lcd_nrows);
-  iLcd.print(buf);
+  m_lcd.setCursor(10, 2 % ms_lcd_nrows);
+  m_lcd.print(buf);
 }
 
 void Display::DisplayBlockTemp() {
@@ -208,17 +200,17 @@ void Display::DisplayBlockTemp() {
   sprintFloat(floatStr, GetThermocycler().GetPlateTemp(), 1, true);
   sprintf_P(buf, BLOCK_TEMP_FORM_STR, floatStr);
   //iLcd.setCursor(13, 0 % ms_lcd_nrows);
-  iLcd.setCursor(13, 0 % ms_lcd_nrows);
-  iLcd.print(buf);
+  m_lcd.setCursor(13, 0 % ms_lcd_nrows);
+  m_lcd.print(buf);
 }
 
 void Display::DisplayCycle()
 {
   char buf[16];
   
-  iLcd.setCursor(0, 3 % ms_lcd_nrows);
+  m_lcd.setCursor(0, 3 % ms_lcd_nrows);
   sprintf_P(buf, CYCLE_FORM_STR, GetThermocycler().GetCurrentCycleNum(), GetThermocycler().GetNumCycles());
-  iLcd.print(buf);
+  m_lcd.print(buf);
 }
 
 void Display::DisplayState()
@@ -254,7 +246,46 @@ void Display::DisplayState()
     break;
   }
   
-  iLcd.setCursor(0, 0 % ms_lcd_nrows);
+  m_lcd.setCursor(0, 0 % ms_lcd_nrows);
   sprintf_P(buf, STATE_FORM_STR, stateStr);
-  iLcd.print(buf);
+  m_lcd.print(buf);
+}
+
+void Display::ShowAll(
+  const int current_temperature,
+  const bool is_heating,
+  const int current_step,
+  const int number_of_steps,
+  const int minutes_left
+)
+{
+  const int sz = m_parameters.m_lcd_ncols + 1; //+1 for null terminator
+  assert(sz > 16);
+  char * const text = new char[sz];
+  text[ 0] = '0' + (current_temperature / 10);
+  text[ 1] = '0' + (current_temperature % 10);
+  text[ 2] = 'o';
+  text[ 3] = 'C';
+  text[ 4] = is_heating ? '^' : 'v';
+  text[ 5] = ' ';
+  text[ 6] = '0' + (current_step / 10);
+  text[ 7] = '0' + (current_step % 10);
+  text[ 8] = '/';
+  text[ 9] = '0' + (number_of_steps / 10);
+  text[10] = '0' + (number_of_steps % 10);
+  text[11] = ' ';
+  text[12] = '0' + (minutes_left / 60);
+  text[13] = ':';
+  text[14] = '0' + ((minutes_left % 60) / 10);
+  text[15] = '0' + ((minutes_left % 60) % 10);
+  //Add spaces
+  for (int i=16; i < z-2; ++i)
+  {
+    text[i] = ' ';
+  }
+  text[sz-1] = '\0';
+  m_lcd.print(text);
+
+  delete[] text;
+
 }

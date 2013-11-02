@@ -23,7 +23,11 @@
 #define OPENPCR_FIRMWARE_VERSION_STRING "1.0.5"
 #define PLATE_FAST_RAMP_THRESHOLD_MS 1000
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wattributes"
 #include "Arduino.h"
+#pragma GCC diagnostic pop
+
 #include <avr/pgmspace.h>
 
 class Thermocycler;

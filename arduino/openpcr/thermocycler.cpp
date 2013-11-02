@@ -20,9 +20,12 @@
 #include "thermocycler.h"
 
 #include "display.h"
+#include "displayparameters.h"
 #include "program.h"
 #include "serialcontrol.h"
 #include "../Wire/Wire.h"
+
+#include <avr/io.h>
 #include <avr/pgmspace.h>
 
 //constants
@@ -80,15 +83,17 @@ const SPIDTuning LID_PID_GAIN_SCHEDULE[] = {
   { 200, 80, 1.1, 10 }
 };
 
-//public
 Thermocycler::Thermocycler(
   boolean restarted,
   const int pin_lid_thermistor,
-  const int pin_plate_thermistor)
-  : iLidThermistor(pin_lid_thermistor),
+  const int pin_plate_thermistor,
+  const DisplayParameters& display_parameters
+  )
+  :
+    iLidThermistor(pin_lid_thermistor),
     iPlateThermistor(pin_plate_thermistor),
     iRestarted(restarted),
-    ipDisplay(NULL),
+    ipDisplay(new Display(display_parameters)),
     ipProgram(NULL),
     ipDisplayCycle(NULL),
     ipSerialControl(NULL),
@@ -103,7 +108,6 @@ Thermocycler::Thermocycler(
     iLidPid(LID_PID_GAIN_SCHEDULE, MIN_LID_PWM, MAX_LID_PWM),
     iTargetLidTemp(0)
 {
-  ipDisplay = new Display();
   ipSerialControl = new SerialControl(ipDisplay);
   
   //init pins

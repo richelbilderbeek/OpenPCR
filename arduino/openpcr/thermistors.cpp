@@ -21,7 +21,7 @@
 #include "thermistors.h"
 
 // lid resistance table, in Ohms
-PROGMEM const unsigned int LID_RESISTANCE_TABLE[] = {  
+const int LID_RESISTANCE_TABLE[] = {
   32919, 31270, 29715, 28246, 26858, 25547, 24307, 23135, 22026, 20977,
   19987, 19044, 18154, 17310, 16510, 15752, 15034, 14352, 13705, 13090,
   12507, 11953, 11427, 10927, 10452, 10000, 9570, 9161, 8771, 8401,
@@ -37,7 +37,8 @@ PROGMEM const unsigned int LID_RESISTANCE_TABLE[] = {
   374, 364, 355, 345, 337 };
 
 // plate resistance table, in 0.1 Ohms
-PROGMEM const unsigned long PLATE_RESISTANCE_TABLE[] = {
+const int PLATE_RESISTANCE_TABLE[] =
+{
   3364790, 3149040, 2948480, 2761940, 2588380, 2426810, 2276320, 2136100, 2005390, 1883490,
   1769740, 1663560, 1564410, 1471770, 1385180, 1304210, 1228470, 1157590, 1091220, 1029060,
   970810, 916210, 865010, 816980, 771900, 729570, 689820, 652460, 617360, 584340,
@@ -53,7 +54,9 @@ PROGMEM const unsigned long PLATE_RESISTANCE_TABLE[] = {
   12550, 12150, 11770, 11400, 11040, 10700, 10370, 10050, 9738, 9441,
   9155, 8878, 8612, 8354, 8106, 7866, 7635, 7412, 7196, 6987, 6786,
   6591, 6403, 6222, 6046, 5876 };
-  
+
+#pragma GCC diagnostic pop
+
 //spi
 //const int DATAOUT = 11; //MOSI, NEVER USED
 //#define DATAIN  12//MISO //ms_pin_plate_thermistor
@@ -61,31 +64,42 @@ PROGMEM const unsigned long PLATE_RESISTANCE_TABLE[] = {
 //const int SPICLOCK  = 13; //sck, NEVER USED
 #define SLAVESELECT 10//ss
 
-//const int CLidThermistor::ms_pin_lid_thermistor = A1;
-//------------------------------------------------------------------------------
-float TableLookup(const unsigned long lookupTable[], unsigned int tableSize, int startValue, unsigned long searchValue) {
+double TableLookup(
+  const int lookupTable[],
+  const int sz,
+  const int startValue,
+  const int searchValue)
+{
   //simple linear search for now
-  int i;
-  for (i = 0; i < tableSize; i++) {
-    if (searchValue >= pgm_read_dword_near(lookupTable + i))
+  int i = 0;
+  for (i = 0; i != sz; ++i)
+  {
+    //if (searchValue >= pgm_read_dword_near(lookupTable + i))
+    if (searchValue >= lookupTable[i])
       break;
   }
   
-  if (i > 0) {
-    unsigned long high_val = pgm_read_dword_near(lookupTable + i - 1);
-    unsigned long low_val = pgm_read_dword_near(lookupTable + i);
-    return i + startValue - (float)(searchValue - low_val) / (float)(high_val - low_val);
-  } else {
-    return startValue;
-  }
+  const int high_val = lookupTable[i ==  0 ? i : i - 1];
+  const int low_val  = lookupTable[i  < sz ? i : i - 1];
+  const double temperature
+    = static_cast<double>(i + startValue)
+    - (static_cast<double>(searchValue - low_val) / static_cast<double>(high_val - low_val));
+  return temperature;
 }
-//------------------------------------------------------------------------------
-float TableLookup(const unsigned int lookupTable[], unsigned int tableSize, int startValue, unsigned long searchValue) {
+
+/*
+float TableLookup(
+  const unsigned int lookupTable[],
+  unsigned int tableSize,
+  int startValue,
+  unsigned long searchValue)
+{
   //simple linear search for now
-  int i;
-  for (i = 0; i < tableSize; i++) {
-    if (searchValue >= pgm_read_word_near(lookupTable + i))
-      break;
+  int i = 0;
+  for (i = 0; i != tableSize; ++i)
+  {
+    if (searchValue >= lookupTable[i]) break;
+    //if (searchValue >= pgm_read_word_near(lookupTable + i))
   }
   
   if (i > 0) {
@@ -96,6 +110,7 @@ float TableLookup(const unsigned int lookupTable[], unsigned int tableSize, int 
     return startValue;
   }
 }
+*/
 
 ////////////////////////////////////////////////////////////////////
 // Class CLidThermistor
@@ -110,7 +125,6 @@ CLidThermistor::CLidThermistor(const int pin_lid_thermistor)
 void CLidThermistor::ReadTemp() {
   unsigned long voltage_mv = (unsigned long)analogRead(m_pin_lid_thermistor) * 5000 / 1024;
   unsigned long resistance = voltage_mv * 2200 / (5000 - voltage_mv);
-  
   iTemp = TableLookup(LID_RESISTANCE_TABLE, sizeof(LID_RESISTANCE_TABLE) / sizeof(LID_RESISTANCE_TABLE[0]), 0, resistance);
 }
 
@@ -147,7 +161,7 @@ void CPlateThermistor::ReadTemp() {
   unsigned long adcDivisor = 0x1FFFFF;
   float voltage = (float)conv * 5.0 / adcDivisor;
 
-  unsigned int convHigh = (conv >> 16);
+  //unsigned int convHigh = (conv >> 16);
   
   digitalWrite(SLAVESELECT, HIGH);
   

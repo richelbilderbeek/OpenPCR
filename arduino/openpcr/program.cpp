@@ -23,7 +23,6 @@
 
 #include "display.h"
 
-////////////////////////////////////////////////////////////////////
 // Class Step
 void Step::SetName(const char* szName) {
   strncpy(iName, szName, sizeof(iName));

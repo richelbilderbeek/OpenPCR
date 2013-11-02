@@ -25,6 +25,7 @@
 #include "thermistors.h"
 
 class Display;
+class DisplayParameters;
 class SerialControl;
 
 class Thermocycler {
@@ -61,7 +62,9 @@ public:
   Thermocycler(
     boolean restarted,
     const int pin_lid_thermistor,
-    const int pin_plate_thermistor);
+    const int pin_plate_thermistor,
+    const DisplayParameters& display_parameters
+  );
   ~Thermocycler();
   
   // accessors
@@ -111,7 +114,7 @@ private:
   
 private:
   // components
-  Display* ipDisplay;
+  Display* const ipDisplay;
   SerialControl* ipSerialControl;
   CLidThermistor iLidThermistor;
   CPlateThermistor iPlateThermistor;
