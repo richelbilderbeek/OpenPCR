@@ -81,22 +81,27 @@ const SPIDTuning LID_PID_GAIN_SCHEDULE[] = {
 };
 
 //public
-Thermocycler::Thermocycler(boolean restarted):
-  iRestarted(restarted),
-  ipDisplay(NULL),
-  ipProgram(NULL),
-  ipDisplayCycle(NULL),
-  ipSerialControl(NULL),
-  iProgramState(EStartup),
-  ipPreviousStep(NULL),
-  ipCurrentStep(NULL),
-  iThermalDirection(OFF),
-  iPeltierPwm(0),
-  iCycleStartTime(0),
-  iRamping(true),
-  iPlatePid(&iPlateThermistor.GetTemp(), &iPeltierPwm, &iTargetPlateTemp, PLATE_PID_INC_NORM_P, PLATE_PID_INC_NORM_I, PLATE_PID_INC_NORM_D, DIRECT),
-  iLidPid(LID_PID_GAIN_SCHEDULE, MIN_LID_PWM, MAX_LID_PWM),
-  iTargetLidTemp(0)
+Thermocycler::Thermocycler(
+  boolean restarted,
+  const int pin_lid_thermistor,
+  const int pin_plate_thermistor)
+  : iLidThermistor(pin_lid_thermistor),
+    iPlateThermistor(pin_plate_thermistor),
+    iRestarted(restarted),
+    ipDisplay(NULL),
+    ipProgram(NULL),
+    ipDisplayCycle(NULL),
+    ipSerialControl(NULL),
+    iProgramState(EStartup),
+    ipPreviousStep(NULL),
+    ipCurrentStep(NULL),
+    iThermalDirection(OFF),
+    iPeltierPwm(0),
+    iCycleStartTime(0),
+    iRamping(true),
+    iPlatePid(&iPlateThermistor.GetTemp(), &iPeltierPwm, &iTargetPlateTemp, PLATE_PID_INC_NORM_P, PLATE_PID_INC_NORM_I, PLATE_PID_INC_NORM_D, DIRECT),
+    iLidPid(LID_PID_GAIN_SCHEDULE, MIN_LID_PWM, MAX_LID_PWM),
+    iTargetLidTemp(0)
 {
   ipDisplay = new Display();
   ipSerialControl = new SerialControl(ipDisplay);

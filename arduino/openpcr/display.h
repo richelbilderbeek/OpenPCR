@@ -24,8 +24,9 @@
 
 class Cycle;
 
-class Display {
-public:
+///The one-line sixteen character display
+struct Display
+{
   Display();
   
   //accessotrs

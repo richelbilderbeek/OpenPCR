@@ -28,7 +28,8 @@ HEADERS += \
     openpcr/PID_v1.h \
     openpcr/pid.h \
     openpcr/pcr_includes.h \
-    openpcr/display.h
+    openpcr/display.h \
+    openpcr/openpcr.ino
 
 OTHER_FILES += \
     ../air/js/openpcr.js \

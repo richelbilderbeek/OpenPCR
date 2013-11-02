@@ -16,6 +16,7 @@
  *  the OpenPCR control software.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <assert.h>
 #include "pcr_includes.h"
 #include "thermistors.h"
 
@@ -56,11 +57,11 @@ PROGMEM const unsigned long PLATE_RESISTANCE_TABLE[] = {
 //spi
 //const int DATAOUT = 11; //MOSI, NEVER USED
 //#define DATAIN  12//MISO //ms_pin_plate_thermistor
-const int CPlateThermistor::ms_pin_plate_thermistor = A4;
+//const int CPlateThermistor::ms_pin_plate_thermistor = A4;
 //const int SPICLOCK  = 13; //sck, NEVER USED
 #define SLAVESELECT 10//ss
 
-const int CLidThermistor::ms_pin_lid_thermistor = A1;
+//const int CLidThermistor::ms_pin_lid_thermistor = A1;
 //------------------------------------------------------------------------------
 float TableLookup(const unsigned long lookupTable[], unsigned int tableSize, int startValue, unsigned long searchValue) {
   //simple linear search for now
@@ -98,12 +99,16 @@ float TableLookup(const unsigned int lookupTable[], unsigned int tableSize, int 
 
 ////////////////////////////////////////////////////////////////////
 // Class CLidThermistor
-CLidThermistor::CLidThermistor():
-  iTemp(0.0) {
+CLidThermistor::CLidThermistor(const int pin_lid_thermistor)
+  : iTemp(0.0),
+    m_pin_lid_thermistor(pin_lid_thermistor)
+{
+  assert(m_pin_lid_thermistor >= 0 && "An Arduino pin number is zero at least");
+  assert(m_pin_lid_thermistor <= 21 && "An Arduino Uno only has 21 pins");
 }
 //------------------------------------------------------------------------------
 void CLidThermistor::ReadTemp() {
-  unsigned long voltage_mv = (unsigned long)analogRead(ms_pin_lid_thermistor) * 5000 / 1024;
+  unsigned long voltage_mv = (unsigned long)analogRead(m_pin_lid_thermistor) * 5000 / 1024;
   unsigned long resistance = voltage_mv * 2200 / (5000 - voltage_mv);
   
   iTemp = TableLookup(LID_RESISTANCE_TABLE, sizeof(LID_RESISTANCE_TABLE) / sizeof(LID_RESISTANCE_TABLE[0]), 0, resistance);
@@ -111,12 +116,14 @@ void CLidThermistor::ReadTemp() {
 
 ////////////////////////////////////////////////////////////////////
 // Class CPlateThermistor
-CPlateThermistor::CPlateThermistor():
-  iTemp(0.0) {
+CPlateThermistor::CPlateThermistor(const int pin_plate_thermistor)
+  : iTemp(0.0),
+    m_pin_plate_thermistor(pin_plate_thermistor)
+{
 
   //spi setup
   //pinMode(DATAOUT, OUTPUT); //Never used
-  pinMode(ms_pin_plate_thermistor, INPUT);
+  pinMode(m_pin_plate_thermistor, INPUT);
   //pinMode(SPICLOCK,OUTPUT);
   pinMode(SLAVESELECT,OUTPUT);
   digitalWrite(SLAVESELECT,HIGH); //disable device 
@@ -126,7 +133,7 @@ void CPlateThermistor::ReadTemp() {
   digitalWrite(SLAVESELECT, LOW);
 
   //read data
-  while(digitalRead(ms_pin_plate_thermistor)) {}
+  while(digitalRead(m_pin_plate_thermistor)) {}
   
   uint8_t spiBuf[4];
   memset(spiBuf, 0, sizeof(spiBuf));
@@ -155,4 +162,14 @@ char CPlateThermistor::SPITransfer(volatile char data) {
   while (!(SPSR & (1<<SPIF)))     // Wait the end of the transmission
   {};
   return SPDR;                    // return the received byte
+}
+
+double TermistorValueToTemperature(const int value)
+{
+  //The maximum value returned by analogRead
+  const int max_value = 1024;
+  const double f = static_cast<double>(value)
+    / static_cast<double>(max_value);
+
+  return 100.0 - (100.0 * f);
 }

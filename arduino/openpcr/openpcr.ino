@@ -42,8 +42,14 @@ void setup() {
   //restart detection
   boolean restarted = !(MCUSR & 1);
   MCUSR &= 0xFE;
-    
-  gpThermocycler = new Thermocycler(restarted);
+
+  const int pin_lid_thermistor = A1;
+  const int pin_plate_thermistor = A4;
+
+  gpThermocycler = new Thermocycler(
+    restarted,
+    pin_lid_thermistor,
+    pin_plate_thermistor);
 }
 
 void loop() {

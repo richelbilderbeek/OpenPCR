@@ -58,7 +58,10 @@ public:
     EPIDPlate
   };
   
-  Thermocycler(boolean restarted);
+  Thermocycler(
+    boolean restarted,
+    const int pin_lid_thermistor,
+    const int pin_plate_thermistor);
   ~Thermocycler();
   
   // accessors

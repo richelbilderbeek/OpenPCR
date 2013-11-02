@@ -21,19 +21,20 @@
 
 class CLidThermistor {
 public:
-  CLidThermistor();
+  CLidThermistor(const int pin_lid_thermistor);
   double& GetTemp() { return iTemp; }
   void ReadTemp();
   
 private:
   double iTemp;
 
-  static const int ms_pin_lid_thermistor;
+  //static const int ms_pin_lid_thermistor;
+  const int m_pin_lid_thermistor;
 };
 
 class CPlateThermistor {
 public:
-  CPlateThermistor();
+  CPlateThermistor(const int pin_plate_thermistor);
   double& GetTemp() { return iTemp; }
   void ReadTemp();
 private:
@@ -41,7 +42,9 @@ private:
    
 private:
   double iTemp;
-  static const int ms_pin_plate_thermistor;
+  const int m_pin_plate_thermistor;
 };
+
+double TermistorValueToTemperature(const int value);
 
 #endif
