@@ -21,8 +21,8 @@
 
 #include "thermocycler.h"
 
-#define START_CODE    0xFF
-#define ESCAPE_CODE   0xFE
+//#define START_CODE    0xFF
+//#define ESCAPE_CODE   0xFE
 
 class Display;
 class ProgramComponent;
@@ -36,18 +36,6 @@ typedef enum {
     STATUS_RESP    = 0x80
 } PACKET_TYPE;
 
-//packet header
-struct PCPPacket {
-  PCPPacket(PACKET_TYPE type)
-  : startCode(START_CODE)
-  , length(0)
-  , eType(type)
-  {}
-
-  uint8_t startCode;
-  uint16_t length;
-  uint8_t eType; //lower 4 bits are used for seq
-};
 
 class SerialControl {
 public:
@@ -75,20 +63,23 @@ private:
 private:
   byte buf[MAX_COMMAND_SIZE + 1]; //read or write buffer
   
-  typedef enum{
+  typedef enum
+  {
     STATE_START,
     STATE_STARTCODE_FOUND,
     STATE_PACKETLEN_LOW,
     STATE_PACKETHEADER_DONE
-  }PACKET_STATE;
+  } PACKET_STATE;
   
   PACKET_STATE packetState;
   uint8_t lastPacketSeq;
-  uint16_t packetLen, packetRealLen, iCommandId;
-  boolean bEscapeCodeFound;
-  boolean iReceivedStatusRequest;
+  uint16_t m_command_id;
+  uint16_t m_packet_len;
+  uint16_t m_packet_real_len;
+  bool bEscapeCodeFound;
+  bool iReceivedStatusRequest;
   
-  Display* ipDisplay;
+  Display* m_display;
 };
 
 #endif

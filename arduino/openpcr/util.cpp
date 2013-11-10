@@ -16,12 +16,13 @@
  *  the OpenPCR control software.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wattributes"
+
 #include "pcr_includes.h"
 #include "thermocycler.h"
 #include "display.h"
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wattributes"
 const char FLOAT_PAD_FORM_STR[] PROGMEM = "%3d.%d";
 const char FLOAT_FORM_STR[] PROGMEM = "%d.%d";
 #pragma GCC diagnostic pop
@@ -36,14 +37,19 @@ void sprintFloat(char* str, float val, int decimalDigits, boolean pad) {
     intVal = val * factor - 0.5;
     
   int decimal = intVal % factor;
-  int number = intVal / factor;
+  int number  = intVal / factor;
 
   if (pad)
+  {
     sprintf_P(str, FLOAT_PAD_FORM_STR, number, abs(decimal));
+  }
   else
+  {
     sprintf_P(str, FLOAT_FORM_STR, number, abs(decimal));
+  }
 }
 
+/*
 void* operator new(size_t size) {
   void* pMem = malloc(size);
 
@@ -56,6 +62,7 @@ void* operator new(size_t size) {
 
   return pMem;
 }
+*/
 
 struct __freelist
 {
@@ -83,13 +90,14 @@ void fix28135_malloc_bug()
    }
  }
 
-
+/*
 void operator delete(void * ptr) {
   free(ptr);
   fix28135_malloc_bug();
 }
 
 void __cxa_pure_virtual(void) {};
+*/
 
 unsigned short htons(unsigned short val) {
   return val << (8 + (byte)val);

@@ -26,7 +26,6 @@
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wattributes"
 #include "Arduino.h"
-#pragma GCC diagnostic pop
 
 #include <avr/pgmspace.h>
 
@@ -35,9 +34,9 @@ extern Thermocycler* gpThermocycler;
 inline Thermocycler& GetThermocycler() { return *gpThermocycler; }
 
 //fixes for incomplete C++ implementation, defined in util.cpp
-void* operator new(size_t size);
-void operator delete(void * ptr);
-extern "C" void __cxa_pure_virtual(void);
+//void* operator new(size_t size);
+//void operator delete(void * ptr);
+//extern "C" void __cxa_pure_virtual(void);
 
 //defines
 #define STEP_NAME_LENGTH       14
@@ -60,6 +59,8 @@ unsigned short htons(unsigned short val);
 double absf(const double val);
 
 char* rps(const char* progString);
+
+#pragma GCC diagnostic pop
 
 #endif
 

@@ -16,7 +16,7 @@
  *  the OpenPCR control software.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <assert.h>
+#include "arduinoassert.h"
 #include "pcr_includes.h"
 #include "thermistors.h"
 
@@ -118,8 +118,8 @@ CLidThermistor::CLidThermistor(const int pin_lid_thermistor)
   : iTemp(0.0),
     m_pin_lid_thermistor(pin_lid_thermistor)
 {
-  assert(m_pin_lid_thermistor >= 0 && "An Arduino pin number is zero at least");
-  assert(m_pin_lid_thermistor <= 21 && "An Arduino Uno only has 21 pins");
+  Assert(m_pin_lid_thermistor >= 0 && "An Arduino pin number is zero at least");
+  Assert(m_pin_lid_thermistor <= 21 && "An Arduino Uno only has 21 pins");
 }
 //------------------------------------------------------------------------------
 void CLidThermistor::ReadTemp() {

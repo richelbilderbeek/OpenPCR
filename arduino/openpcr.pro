@@ -5,8 +5,11 @@ TEMPLATE = app
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
 DEFINES += __AVR_ATmega328__
-
+#DEFINES += __PGMSPACE_H_
+DEFINES += "F_CPU=100000000"
 #QMAKE_CFLAGS += -Wattributes
+
+
 
 INCLUDEPATH += \
   /home/richel/ProjectRichelBilderbeek/Libraries/Arduino/libraries/LiquidCrystal \
@@ -24,7 +27,11 @@ SOURCES += \
     openpcr/PID_v1.cpp \
     openpcr/pid.cpp \
     openpcr/display.cpp \
-    openpcr/displayparameters.cpp
+    openpcr/displayparameters.cpp \
+    main_fake.cpp \
+    openpcr/thermocyclerparameters.cpp \
+    ../../Arduino/libraries/EEPROM/EEPROM.cpp \
+    ../../Arduino/libraries/LiquidCrystal/LiquidCrystal.cpp
 
 HEADERS += \
     openpcr/thermocycler.h \
@@ -36,7 +43,12 @@ HEADERS += \
     openpcr/pcr_includes.h \
     openpcr/display.h \
     openpcr/displayparameters.h \
-    openpcr/openpcr.ino
+    openpcr/openpcr.ino \
+    openpcr/thermocyclerparameters.h \
+    ../../Arduino/libraries/EEPROM/EEPROM.h \
+    ../../Arduino/libraries/LiquidCrystal/LiquidCrystal.h \
+    openpcr/arduinoassert.h \
+    openpcr/arduinotrace.h
 
 OTHER_FILES += \
     ../air/js/openpcr.js \

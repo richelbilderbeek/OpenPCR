@@ -39,7 +39,6 @@ struct Display
   void Clear();
   int GetContrast() const { return m_contrast; }
   void SetContrast(const int contrast);
-  void SetDebugMsg(char* szDebugMsg);
   void Update();
   
 private:
@@ -50,12 +49,6 @@ private:
     const int number_of_steps,
     const int minutes_left
   );
-
-  void DisplayEta();
-  void DisplayLidTemp();
-  void DisplayBlockTemp();
-  void DisplayCycle();
-  void DisplayState();
   
 private:
   int m_contrast;

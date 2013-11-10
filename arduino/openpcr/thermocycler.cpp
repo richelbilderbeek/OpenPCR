@@ -19,6 +19,8 @@
 #include "pcr_includes.h"
 #include "thermocycler.h"
 
+#include "arduinotrace.h"
+#include "arduinoassert.h"
 #include "display.h"
 #include "displayparameters.h"
 #include "program.h"
@@ -72,10 +74,10 @@
 
 #define STARTUP_DELAY 4000
 
-const int Thermocycler::ms_pin_peltier_a = 2;
-const int Thermocycler::ms_pin_heater_lid = 3;
-const int Thermocycler::ms_pin_peltier_b = 4;
-const int Thermocycler::ms_pin_block_thermistor = A4;
+//const int Thermocycler::m_pin_block_thermistor = A4;
+//const int Thermocycler::m_pin_heater_lid = 3;
+//const int Thermocycler::m_pin_peltier_a = 2;
+//const int Thermocycler::m_pin_peltier_b = 4;
 //pid parameters
 const SPIDTuning LID_PID_GAIN_SCHEDULE[] = {
   //maxTemp, kP, kI, kD
@@ -84,49 +86,59 @@ const SPIDTuning LID_PID_GAIN_SCHEDULE[] = {
 };
 
 Thermocycler::Thermocycler(
-  boolean restarted,
+  bool is_restarted,
+  const int pin_block_thermistor,
+  const int pin_heater_lid,
   const int pin_lid_thermistor,
+  const int pin_peltier_a,
+  const int pin_peltier_b,
   const int pin_plate_thermistor,
   const DisplayParameters& display_parameters
   )
   :
-    iLidThermistor(pin_lid_thermistor),
-    iPlateThermistor(pin_plate_thermistor),
-    iRestarted(restarted),
-    ipDisplay(new Display(display_parameters)),
-    ipProgram(NULL),
-    ipDisplayCycle(NULL),
-    ipSerialControl(NULL),
-    iProgramState(EStartup),
-    ipPreviousStep(NULL),
-    ipCurrentStep(NULL),
-    iThermalDirection(OFF),
-    iPeltierPwm(0),
-    iCycleStartTime(0),
-    iRamping(true),
-    iPlatePid(&iPlateThermistor.GetTemp(), &iPeltierPwm, &iTargetPlateTemp, PLATE_PID_INC_NORM_P, PLATE_PID_INC_NORM_I, PLATE_PID_INC_NORM_D, DIRECT),
-    iLidPid(LID_PID_GAIN_SCHEDULE, MIN_LID_PWM, MAX_LID_PWM),
-    iTargetLidTemp(0)
+    m_current_step(NULL),
+    m_cycle_start_time(0),
+    m_display(new Display(display_parameters)),
+    m_display_cycle(NULL),
+    m_is_ramping(true),
+    m_is_restarted(is_restarted),
+    m_lid_pid(LID_PID_GAIN_SCHEDULE, MIN_LID_PWM, MAX_LID_PWM),
+    m_lid_thermistor(pin_lid_thermistor),
+    m_peltier_pwm(0.0),
+    m_pin_block_thermistor(pin_block_thermistor),
+    m_pin_heater_lid(pin_heater_lid),
+    m_pin_peltier_a(pin_peltier_a),
+    m_pin_peltier_b(pin_peltier_b),
+    m_plate_pid(NULL),
+    m_plate_thermistor(pin_plate_thermistor),
+    m_previous_step(NULL),
+    m_program(NULL),
+    m_program_state(EStartup),
+    m_serial_control(NULL),
+    m_target_lid_temp(0),
+    m_thermal_direction(OFF)
 {
-  ipSerialControl = new SerialControl(ipDisplay);
+  Trace("Thermocycler::Thermocycler");
+  m_plate_pid = new PID(
+    &m_plate_thermistor.GetTemp(),
+    &m_peltier_pwm,
+    &m_target_plate_temp,
+    PLATE_PID_INC_NORM_P,
+    PLATE_PID_INC_NORM_I,
+    PLATE_PID_INC_NORM_D,
+    DIRECT
+  );
+  m_serial_control = new SerialControl(m_display);
   
-  //init pins
-  //pinMode(15, INPUT); //NEVER USED
-  //pinMode(2, OUTPUT); //NEVER USED
-  //pinMode(3, OUTPUT); //NEVER USED
-  //pinMode(4, OUTPUT); //NEVER USED
-  //pinMode(5, OUTPUT); //NEVER USED
-  
-    // SPCR = 01010000
+  // SPCR = 01010000
   //interrupt disabled,spi enabled,msb 1st,master,clk low when idle,
   //sample on leading edge of clk,system clock/4 rate (fastest)
-  int clr;
   SPCR = (1<<SPE)|(1<<MSTR)|(1<<4);
-  clr=SPSR;
-  clr=SPDR;
+  //int clr = SPSR;
+  //clr = SPDR;
   delay(10); 
 
-  iPlatePid.SetOutputLimits(MIN_PELTIER_PWM, MAX_PELTIER_PWM);
+  m_plate_pid->SetOutputLimits(MIN_PELTIER_PWM, MAX_PELTIER_PWM);
   
   // Peltier PWM
   TCCR1A |= (1<<WGM11) | (1<<WGM10);
@@ -136,7 +148,7 @@ Thermocycler::Thermocycler(
   TCCR2A = _BV(COM2A1) | _BV(COM2B1) | _BV(WGM21) | _BV(WGM20);
   TCCR2B = _BV(CS22);
 
-  iszProgName[0] = '\0';
+  m_program_name[0] = '\0';
 
   Step * const step = new Step;
   step->SetName("StapEen");
@@ -156,167 +168,175 @@ Thermocycler::Thermocycler(
 
 Thermocycler::~Thermocycler()
 {
-  delete ipSerialControl;
-  delete ipDisplay;
+  delete m_serial_control;
+  delete m_display;
 }
 
 // accessors
 int Thermocycler::GetNumCycles()
 {
-  return ipDisplayCycle->GetNumCycles();
+  return m_display_cycle->GetNumCycles();
 }
 
 int Thermocycler::GetCurrentCycleNum() {
   int numCycles = GetNumCycles();
-  return ipDisplayCycle->GetCurrentCycle() > numCycles ? numCycles : ipDisplayCycle->GetCurrentCycle();
+  return m_display_cycle->GetCurrentCycle() > numCycles ? numCycles : m_display_cycle->GetCurrentCycle();
 }
 
 Thermocycler::ThermalState Thermocycler::GetThermalState() {
-  if (iProgramState == EStartup || iProgramState == EStopped)
+  if (m_program_state == EStartup || m_program_state == EStopped)
     return EIdle;
   
-  if (iRamping) {
-    if (ipPreviousStep != NULL) {
-      return ipCurrentStep->GetTemp() > ipPreviousStep->GetTemp() ? EHeating : ECooling;
+  if (m_is_ramping) {
+    if (m_previous_step != NULL) {
+      return m_current_step->GetTemp() > m_previous_step->GetTemp() ? EHeating : ECooling;
     } else {
-      return iThermalDirection == HEAT ? EHeating : ECooling;
+      return m_thermal_direction == HEAT ? EHeating : ECooling;
     }
   } else {
     return EHolding;
   }
 }
  
-// control
-void Thermocycler::SetProgram(Cycle* pProgram, Cycle* pDisplayCycle, const char* szProgName, int lidTemp) {
+void Thermocycler::SetProgram(
+  Cycle* pProgram,
+  Cycle* pDisplayCycle,
+  const char* szProgName,
+  int lidTemp)
+{
   Stop();
 
-  ipProgram = pProgram;
-  ipDisplayCycle = pDisplayCycle;
+  m_program = pProgram;
+  m_display_cycle = pDisplayCycle;
 
-  strcpy(iszProgName, szProgName);
-  iTargetLidTemp = lidTemp;
+  strcpy(m_program_name, szProgName);
+  m_target_lid_temp = lidTemp;
 }
 
 void Thermocycler::Stop() {
-  iProgramState = EStopped;
+  m_program_state = EStopped;
   
-  ipProgram = NULL;
-  ipPreviousStep = NULL;
-  ipCurrentStep = NULL;
+  m_program = NULL;
+  m_previous_step = NULL;
+  m_current_step = NULL;
   
-  iStepPool.ResetPool();
-  iCyclePool.ResetPool();
+  m_step_pool.ResetPool();
+  m_cycle_pool.ResetPool();
   
-  ipDisplay->Clear();
+  m_display->Clear();
 }
 
 PcrStatus Thermocycler::Start() {
-  if (ipProgram == NULL)
+  if (m_program == NULL)
     return ENoProgram;
   
   //advance to lid wait state
-  iProgramState = ELidWait;
+  m_program_state = ELidWait;
   
   return ESuccess;
 }
     
-// internal
 void Thermocycler::Loop()
 {
-  switch (iProgramState)
+  switch (m_program_state)
   {
     case EStartup:
     if (millis() > STARTUP_DELAY) {
-      iProgramState = EStopped;
+      m_program_state = EStopped;
       
-      if (!iRestarted && !ipSerialControl->CommandReceived()) {
+      //if (!m_is_restarted && !m_serial_control->CommandReceived())
+      {
         //check for stored program
-        SCommand command;
-        if (ProgramStore::RetrieveProgram(command, (char*)ipSerialControl->GetBuffer()))
-          ProcessCommand(command);
+        //SCommand command;
+        //if (ProgramStore::RetrieveProgram(command, (char*)m_serial_control->GetBuffer()))
+        //  ProcessCommand(command);
       }
     }
     break;
 
   case ELidWait:    
-    if (GetLidTemp() >= iTargetLidTemp - LID_START_TOLERANCE) {
+    if (GetLidTemp() >= m_target_lid_temp - LID_START_TOLERANCE) {
       //lid has warmed, begin program
-      iThermalDirection = OFF;
-      iPeltierPwm = 0;
+      m_thermal_direction = OFF;
+      m_peltier_pwm = 0;
       PreprocessProgram();
-      iProgramState = ERunning;
+      m_program_state = ERunning;
       
-      ipProgram->BeginIteration();
+      m_program->BeginIteration();
       AdvanceToNextStep();
       
-      iProgramStartTimeMs = millis();
+      m_program_start_time_ms = millis();
     }
     break;
   
   case ERunning:
     //update program
-    if (iProgramState == ERunning) {
-      if (iRamping && abs(ipCurrentStep->GetTemp() - GetPlateTemp()) <= CYCLE_START_TOLERANCE && GetRampElapsedTimeMs() > ipCurrentStep->GetRampDurationS() * 1000) {
+    if (m_program_state == ERunning) {
+      if (m_is_ramping && abs(m_current_step->GetTemp() - GetPlateTemp()) <= CYCLE_START_TOLERANCE && GetRampElapsedTimeMs() > m_current_step->GetRampDurationS() * 1000) {
         //begin step hold
         
         //eta updates
-        if (ipCurrentStep->GetRampDurationS() == 0) {
+        if (m_current_step->GetRampDurationS() == 0) {
           //fast ramp
-          iElapsedFastRampDegrees += absf(GetPlateTemp() - iRampStartTemp);
-          iTotalElapsedFastRampDurationMs += millis() - iRampStartTime;
+          m_elapsed_fast_ramp_degrees += absf(GetPlateTemp() - m_ramp_start_temp);
+          m_total_elapsed_fast_ramp_duration_ms += millis() - m_ramp_start_time;
         }
         
-        if (iRampStartTemp > GetPlateTemp())
-          iHasCooled = true;
-        iRamping = false;
-        iCycleStartTime = millis();
+        if (m_ramp_start_temp > GetPlateTemp())
+          m_has_cooled = true;
+        m_is_ramping = false;
+        m_cycle_start_time = millis();
         
-      } else if (!iRamping && !ipCurrentStep->IsFinal() && millis() - iCycleStartTime > (unsigned long)ipCurrentStep->GetStepDurationS() * 1000) {
+      } else if (!m_is_ramping && !m_current_step->IsFinal() && millis() - m_cycle_start_time > (unsigned long)m_current_step->GetStepDurationS() * 1000) {
         //begin next step
         AdvanceToNextStep();
           
         //check for program completion
-        if (ipCurrentStep == NULL || ipCurrentStep->IsFinal())
-          iProgramState = EComplete;        
+        if (m_current_step == NULL || m_current_step->IsFinal())
+          m_program_state = EComplete;
       }
     }
     break;
     
   case EComplete:
-    if (iRamping && ipCurrentStep != NULL && abs(ipCurrentStep->GetTemp() - GetPlateTemp()) <= CYCLE_START_TOLERANCE)
-      iRamping = false;
+    if (m_is_ramping && m_current_step != NULL && abs(m_current_step->GetTemp() - GetPlateTemp()) <= CYCLE_START_TOLERANCE)
+      m_is_ramping = false;
+    break;
+  case EStopped: //Nothing
+  case EError: //Nothing
+  case EClear: //Nothing
     break;
   }
   
   //lid 
-  iLidThermistor.ReadTemp();
+  m_lid_thermistor.ReadTemp();
   ControlLid();
   
   //plate  
-  iPlateThermistor.ReadTemp();
+  m_plate_thermistor.ReadTemp();
   CalcPlateTarget();
   ControlPeltier();
   
   //program
   UpdateEta();
-  ipDisplay->Update();
-  ipSerialControl->Process();
+  m_display->Update();
+  m_serial_control->Process();
 }
 
 //private
 void Thermocycler::AdvanceToNextStep() {
-  ipPreviousStep = ipCurrentStep;
-  ipCurrentStep = ipProgram->GetNextStep();
-  if (ipCurrentStep == NULL)
+  m_previous_step = m_current_step;
+  m_current_step = m_program->GetNextStep();
+  if (m_current_step == NULL)
     return;
   
   //update eta calc params
-  if (ipPreviousStep == NULL || ipPreviousStep->GetTemp() != ipCurrentStep->GetTemp()) {
-    iRamping = true;
-    iRampStartTime = millis();
-    iRampStartTemp = GetPlateTemp();
+  if (m_previous_step == NULL || m_previous_step->GetTemp() != m_current_step->GetTemp()) {
+    m_is_ramping = true;
+    m_ramp_start_time = millis();
+    m_ramp_start_temp = GetPlateTemp();
   } else {
-    iCycleStartTime = millis(); //next step starts immediately
+    m_cycle_start_time = millis(); //next step starts immediately
   }
   
   CalcPlateTarget();
@@ -327,93 +347,93 @@ void Thermocycler::SetPlateControlStrategy() {
   if (InControlledRamp())
     return;
     
-  if (absf(iTargetPlateTemp - GetPlateTemp()) >= PLATE_BANGBANG_THRESHOLD && !InControlledRamp()) {
-    iPlateControlMode = EBangBang;
-    iPlatePid.SetMode(MANUAL);
+  if (absf(m_target_plate_temp - GetPlateTemp()) >= PLATE_BANGBANG_THRESHOLD && !InControlledRamp()) {
+    m_plate_control_mode = EBangBang;
+    m_plate_pid->SetMode(MANUAL);
   } else {
-    iPlateControlMode = EPIDPlate;
-    iPlatePid.SetMode(AUTOMATIC);
+    m_plate_control_mode = EPIDPlate;
+    m_plate_pid->SetMode(AUTOMATIC);
   }
   
-  if (iRamping) {
-    if (iTargetPlateTemp >= GetPlateTemp()) {
-      iDecreasing = false;
-      if (iTargetPlateTemp < PLATE_PID_INC_LOW_THRESHOLD)
-        iPlatePid.SetTunings(PLATE_PID_INC_LOW_P, PLATE_PID_INC_LOW_I, PLATE_PID_INC_LOW_D);
+  if (m_is_ramping) {
+    if (m_target_plate_temp >= GetPlateTemp()) {
+      m_is_decreasing = false;
+      if (m_target_plate_temp < PLATE_PID_INC_LOW_THRESHOLD)
+        m_plate_pid->SetTunings(PLATE_PID_INC_LOW_P, PLATE_PID_INC_LOW_I, PLATE_PID_INC_LOW_D);
       else
-        iPlatePid.SetTunings(PLATE_PID_INC_NORM_P, PLATE_PID_INC_NORM_I, PLATE_PID_INC_NORM_D);
+        m_plate_pid->SetTunings(PLATE_PID_INC_NORM_P, PLATE_PID_INC_NORM_I, PLATE_PID_INC_NORM_D);
 
     } else {
-      iDecreasing = true;
-      if (iTargetPlateTemp > PLATE_PID_DEC_HIGH_THRESHOLD)
-        iPlatePid.SetTunings(PLATE_PID_DEC_HIGH_P, PLATE_PID_DEC_HIGH_I, PLATE_PID_DEC_HIGH_D);
-      else if (iTargetPlateTemp < PLATE_PID_DEC_LOW_THRESHOLD)
-        iPlatePid.SetTunings(PLATE_PID_DEC_LOW_P, PLATE_PID_DEC_LOW_I, PLATE_PID_DEC_LOW_D);
+      m_is_decreasing = true;
+      if (m_target_plate_temp > PLATE_PID_DEC_HIGH_THRESHOLD)
+        m_plate_pid->SetTunings(PLATE_PID_DEC_HIGH_P, PLATE_PID_DEC_HIGH_I, PLATE_PID_DEC_HIGH_D);
+      else if (m_target_plate_temp < PLATE_PID_DEC_LOW_THRESHOLD)
+        m_plate_pid->SetTunings(PLATE_PID_DEC_LOW_P, PLATE_PID_DEC_LOW_I, PLATE_PID_DEC_LOW_D);
       else
-        iPlatePid.SetTunings(PLATE_PID_DEC_NORM_P, PLATE_PID_DEC_NORM_I, PLATE_PID_DEC_NORM_D);
+        m_plate_pid->SetTunings(PLATE_PID_DEC_NORM_P, PLATE_PID_DEC_NORM_I, PLATE_PID_DEC_NORM_D);
     }
   }
 }
 
 void Thermocycler::CalcPlateTarget() {
-  if (ipCurrentStep == NULL)
+  if (m_current_step == NULL)
     return;
   
   if (InControlledRamp()) {
     //controlled ramp
-    double tempDelta = ipCurrentStep->GetTemp() - ipPreviousStep->GetTemp();
-    double rampPoint = (double)GetRampElapsedTimeMs() / (ipCurrentStep->GetRampDurationS() * 1000);
-    iTargetPlateTemp = ipPreviousStep->GetTemp() + tempDelta * rampPoint;
+    double tempDelta = m_current_step->GetTemp() - m_previous_step->GetTemp();
+    double rampPoint = (double)GetRampElapsedTimeMs() / (m_current_step->GetRampDurationS() * 1000);
+    m_target_plate_temp = m_previous_step->GetTemp() + tempDelta * rampPoint;
     
   } else {
     //fast ramp
-    iTargetPlateTemp = ipCurrentStep->GetTemp();
+    m_target_plate_temp = m_current_step->GetTemp();
   }
 }
 
 void Thermocycler::ControlPeltier() {
   ThermalDirection newDirection = OFF;
   
-  if (iProgramState == ERunning || (iProgramState == EComplete && ipCurrentStep != NULL)) {
+  if (m_program_state == ERunning || (m_program_state == EComplete && m_current_step != NULL)) {
     // Check whether we are nearing target and should switch to PID control
-    if (iPlateControlMode == EBangBang && absf(iTargetPlateTemp - GetPlateTemp()) < PLATE_BANGBANG_THRESHOLD) {
-      iPlateControlMode = EPIDPlate;
-      iPlatePid.SetMode(AUTOMATIC);
-      iPlatePid.ResetI();
+    if (m_plate_control_mode == EBangBang && absf(m_target_plate_temp - GetPlateTemp()) < PLATE_BANGBANG_THRESHOLD) {
+      m_plate_control_mode = EPIDPlate;
+      m_plate_pid->SetMode(AUTOMATIC);
+      m_plate_pid->ResetI();
     }
  
     // Apply control mode
-    if (iPlateControlMode == EBangBang)
-      iPeltierPwm = iTargetPlateTemp > GetPlateTemp() ? MAX_PELTIER_PWM : MIN_PELTIER_PWM;
-    iPlatePid.Compute();
+    if (m_plate_control_mode == EBangBang)
+      m_peltier_pwm = m_target_plate_temp > GetPlateTemp() ? MAX_PELTIER_PWM : MIN_PELTIER_PWM;
+    m_plate_pid->Compute();
     
-    if (iDecreasing && iTargetPlateTemp > PLATE_PID_DEC_LOW_THRESHOLD) {
-      if (iTargetPlateTemp < GetPlateTemp())
-        iPlatePid.ResetI();
+    if (m_is_decreasing && m_target_plate_temp > PLATE_PID_DEC_LOW_THRESHOLD) {
+      if (m_target_plate_temp < GetPlateTemp())
+        m_plate_pid->ResetI();
       else
-        iDecreasing = false;
+        m_is_decreasing = false;
     } 
     
-    if (iPeltierPwm > 0)
+    if (m_peltier_pwm > 0)
       newDirection = HEAT;
-    else if (iPeltierPwm < 0)
+    else if (m_peltier_pwm < 0)
       newDirection = COOL; 
     else
       newDirection = OFF;
   } else {
-    iPeltierPwm = 0;
+    m_peltier_pwm = 0;
   }
   
-  iThermalDirection = newDirection;
-  SetPeltier(newDirection, abs(iPeltierPwm));
+  m_thermal_direction = newDirection;
+  SetPeltier(newDirection, abs(m_peltier_pwm));
 }
 
 void Thermocycler::ControlLid() {
   int drive = 0;  
-  if (iProgramState == ERunning || iProgramState == ELidWait)
-    drive = iLidPid.Compute(iTargetLidTemp, GetLidTemp());
+  if (m_program_state == ERunning || m_program_state == ELidWait)
+    drive = m_lid_pid.Compute(m_target_lid_temp, GetLidTemp());
  
-  analogWrite(ms_pin_heater_lid, drive);
+  analogWrite(m_pin_heater_lid, drive);
 }
 
 //PreprocessProgram initializes ETA parameters and validates/modifies ramp conditions
@@ -421,17 +441,17 @@ void Thermocycler::PreprocessProgram() {
   Step* pCurrentStep;
   Step* pPreviousStep = NULL;
   
-  iProgramHoldDurationS = 0;
-  iEstimatedTimeRemainingS = 0;
-  iHasCooled = false;
+  m_program_hold_duration_sec = 0;
+  m_estimated_time_remaining_sec = 0;
+  m_has_cooled = false;
   
-  iProgramControlledRampDurationS = 0;
-  iProgramFastRampDegrees = 0;
-  iElapsedFastRampDegrees = 0;
-  iTotalElapsedFastRampDurationMs = 0;  
+  m_program_controlled_ramp_duration_sec = 0;
+  m_program_fast_ramp_degrees = 0;
+  m_elapsed_fast_ramp_degrees = 0;
+  m_total_elapsed_fast_ramp_duration_ms = 0;
   
-  ipProgram->BeginIteration();
-  while ((pCurrentStep = ipProgram->GetNextStep()) && !pCurrentStep->IsFinal()) {
+  m_program->BeginIteration();
+  while ((pCurrentStep = m_program->GetNextStep()) && !pCurrentStep->IsFinal()) {
     //validate ramp
     if (pPreviousStep != NULL && pCurrentStep->GetRampDurationS() * 1000 < absf(pCurrentStep->GetTemp() - pPreviousStep->GetTemp()) * PLATE_FAST_RAMP_THRESHOLD_MS) {
       //cannot ramp that fast, ignored set ramp
@@ -439,16 +459,16 @@ void Thermocycler::PreprocessProgram() {
     }
     
     //update eta hold
-    iProgramHoldDurationS += pCurrentStep->GetStepDurationS();
+    m_program_hold_duration_sec += pCurrentStep->GetStepDurationS();
  
     //update eta ramp
     if (pCurrentStep->GetRampDurationS() > 0) {
       //controlled ramp
-      iProgramControlledRampDurationS += pCurrentStep->GetRampDurationS();
+      m_program_controlled_ramp_duration_sec += pCurrentStep->GetRampDurationS();
     } else {
       //fast ramp
       double previousTemp = pPreviousStep ? pPreviousStep->GetTemp() : GetPlateTemp();
-      iProgramFastRampDegrees += absf(previousTemp - pCurrentStep->GetTemp()) - CYCLE_START_TOLERANCE;
+      m_program_fast_ramp_degrees += absf(previousTemp - pCurrentStep->GetTemp()) - CYCLE_START_TOLERANCE;
     }
     
     pPreviousStep = pCurrentStep;
@@ -456,37 +476,37 @@ void Thermocycler::PreprocessProgram() {
 }
 
 void Thermocycler::UpdateEta() {
-  if (iProgramState == ERunning) {
+  if (m_program_state == ERunning) {
     double fastSecondPerDegree;
-    if (iElapsedFastRampDegrees == 0 || !iHasCooled)
+    if (m_elapsed_fast_ramp_degrees == 0 || !m_has_cooled)
       fastSecondPerDegree = 1.0;
     else
-      fastSecondPerDegree = iTotalElapsedFastRampDurationMs / 1000 / iElapsedFastRampDegrees;
+      fastSecondPerDegree = m_total_elapsed_fast_ramp_duration_ms / 1000 / m_elapsed_fast_ramp_degrees;
       
-    unsigned long estimatedDurationS = iProgramHoldDurationS + iProgramControlledRampDurationS + iProgramFastRampDegrees * fastSecondPerDegree;
+    unsigned long estimatedDurationS = m_program_hold_duration_sec + m_program_controlled_ramp_duration_sec + m_program_fast_ramp_degrees * fastSecondPerDegree;
     unsigned long elapsedTimeS = GetElapsedTimeS();
-    iEstimatedTimeRemainingS = estimatedDurationS > elapsedTimeS ? estimatedDurationS - elapsedTimeS : 0;
+    m_estimated_time_remaining_sec = estimatedDurationS > elapsedTimeS ? estimatedDurationS - elapsedTimeS : 0;
   }
 }
 
 void Thermocycler::SetPeltier(ThermalDirection dir, int pwm) {
   if (dir == COOL)
   {
-    digitalWrite(ms_pin_peltier_a, HIGH);
-    digitalWrite(ms_pin_peltier_b, LOW);
+    digitalWrite(m_pin_peltier_a, HIGH);
+    digitalWrite(m_pin_peltier_b, LOW);
   }
   else if (dir == HEAT)
   {
-    digitalWrite(ms_pin_peltier_a, LOW);
-    digitalWrite(ms_pin_peltier_b, HIGH);
+    digitalWrite(m_pin_peltier_a, LOW);
+    digitalWrite(m_pin_peltier_b, HIGH);
   }
   else
   {
-    digitalWrite(ms_pin_peltier_a, LOW);
-    digitalWrite(ms_pin_peltier_b, LOW);
+    digitalWrite(m_pin_peltier_a, LOW);
+    digitalWrite(m_pin_peltier_b, LOW);
   }
   
-  analogWrite(ms_pin_block_thermistor, pwm); //was pin 9
+  analogWrite(m_pin_block_thermistor, pwm); //was pin 9
 }
 
 void Thermocycler::ProcessCommand(SCommand& command) {
@@ -515,9 +535,9 @@ void Thermocycler::ProcessCommand(SCommand& command) {
   
   } else if (command.command == SCommand::EConfig) {
     //update displayed
-    ipDisplay->SetContrast(command.contrast);
+    m_display->SetContrast(command.contrast);
     
     //update stored contrast
-    ProgramStore::StoreContrast(command.contrast);
+    //ProgramStore::StoreContrast(command.contrast);
   }
 }

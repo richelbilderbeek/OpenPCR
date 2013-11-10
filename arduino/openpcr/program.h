@@ -19,6 +19,8 @@
 #ifndef _PROGRAM_H_
 #define _PROGRAM_H_
 
+#include "pcr_includes.h"
+
 class Step;
 
 ////////////////////////////////////////////////////////////////////
@@ -46,7 +48,7 @@ struct Step : public ProgramComponent
   unsigned long GetRampDurationS() const { return iRampDurationS; }
   float GetTemp() const { return iTemp; }
   virtual TType GetType() const { return EStep; }
-  boolean IsFinal() const { return iStepDurationS == 0; }
+  bool IsFinal() const { return iStepDurationS == 0; }
 
   // mutators
   void SetStepDurationS(const unsigned long stepDurationS) { iStepDurationS = stepDurationS; }
@@ -64,7 +66,7 @@ private:
   unsigned int iStepDurationS; //in seconds
   unsigned long iRampDurationS; //in seconds, refers to ramp before the current step hold
   float iTemp; // C
-  boolean iStepReturned;
+  bool iStepReturned;
   char iName[STEP_NAME_LENGTH];
 };
 
@@ -147,15 +149,6 @@ private:
   static Cycle* ParseProgram(char* pBuffer);
   static ProgramComponent* ParseCycle(char* pBuffer);
   static Step* ParseStep(char* pBuffer);
-};
-
-struct ProgramStore
-{
-  static uint8_t RetrieveContrast();
-  static boolean RetrieveProgram(SCommand& command, char* pBuffer);
-
-  static void StoreContrast(uint8_t contrast);
-  static void StoreProgram(const char* szProgram);
 };
   
 

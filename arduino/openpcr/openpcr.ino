@@ -17,56 +17,73 @@
  */
 
 #include <LiquidCrystal.h>
-#include <EEPROM.h>
+//#include <EEPROM.h>
 
+#include "arduinoassert.h"
+#include "arduinotrace.h"
+//#include "signal.h"
+#include "displayparameters.h"
 #include "pcr_includes.h"
 #include "thermocycler.h"
 
 Thermocycler* gpThermocycler = NULL;
 
-boolean InitialStart() {
-  for (int i = 0; i < 50; i++) {
-    if (EEPROM.read(i) != 0xFF)
-      return false;
+bool InitialStart()
+{
+  for (int i = 0; i < 50; i++)
+  {
+    //if (EEPROM.read(i) != 0xFF) return false;
   }
   
   return true;
 }
 
-void setup() {
-  //init factory settings
-  if (InitialStart()) {
-    EEPROM.write(0, 100); // set contrast to 100
-  }
-  
+void setup()
+{
+  Serial.begin(9600);
+  Trace("START");
+
   //restart detection
-  boolean restarted = !(MCUSR & 1);
+  bool restarted = !(MCUSR & 1);
   MCUSR &= 0xFE;
 
-  const int pin_lid_thermistor = A1;
-  const int pin_plate_thermistor = A4;
 
-  const DisplayParameyers display_parameters(
+  const DisplayParameters display_parameters(
     16, //lcd_ncols
     1,  //lcd_nrows ;
-    6,  //lcd_pin_rs =  Arduino pin that connects to R/S pin of LCD display
-    7,  //lcd_pin_e  =  Arduino pin that connects to E   pin of LCD display
-    8,  //lcd_pin_d4 =  Arduino pin that connects to D4  pin of LCD display
-    A5, //lcd_pin_d5 =  Arduino pin that connects to D5  pin of LCD display
-    A2, //lcd_pin_d6 =  Arduino pin that connects to D6  pin of LCD display
-    A3, //lcd_pin_d7 =  Arduino pin that connects to D7  pin of LCD display
-    5   //lcd_pin_v0 =  Arduino pin that connects to V0  pin of LCD display
+    2,  //lcd_pin_rs =  Arduino pin that connects to R/S pin of LCD display
+    3,  //lcd_pin_e  =  Arduino pin that connects to E   pin of LCD display
+    4,  //lcd_pin_d4 =  Arduino pin that connects to D4  pin of LCD display
+    6, //lcd_pin_d5 =  Arduino pin that connects to D5  pin of LCD display
+    7, //lcd_pin_d6 =  Arduino pin that connects to D6  pin of LCD display
+    7, //lcd_pin_d7 =  Arduino pin that connects to D7  pin of LCD display
+    8   //lcd_pin_v0 =  Arduino pin that connects to V0  pin of LCD display
   );
+
+  const int pin_block_thermistor = 1;
+  const int pin_heater_lid = 2;
+  const int pin_lid_thermistor = 3;
+  const int pin_peltier_a = 4;
+  const int pin_peltier_b = 5;
+  const int pin_plate_thermistor = 6;
+
+  Trace("Starting thermocycler");
 
   gpThermocycler = new Thermocycler(
     restarted,
+    pin_block_thermistor,
+    pin_heater_lid,
     pin_lid_thermistor,
+    pin_peltier_a,
+    pin_peltier_b,
     pin_plate_thermistor,
     display_parameters
   );
 }
 
-void loop() {
+void loop()
+{
+  Trace("Looping\n");
   gpThermocycler->Loop();
 }
 
