@@ -16,7 +16,7 @@
  *  the OpenPCR control software.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "arduinoassert.h"
+#include <assert.h>
 #include "pcr_includes.h"
 #include "thermistors.h"
 
@@ -39,12 +39,18 @@ const int LID_RESISTANCE_TABLE[] = {
 // plate resistance table, in 0.1 Ohms
 const int PLATE_RESISTANCE_TABLE[] =
 {
-  3364790, 3149040, 2948480, 2761940, 2588380, 2426810, 2276320, 2136100, 2005390, 1883490,
-  1769740, 1663560, 1564410, 1471770, 1385180, 1304210, 1228470, 1157590, 1091220, 1029060,
-  970810, 916210, 865010, 816980, 771900, 729570, 689820, 652460, 617360, 584340,
-  553290, 524070, 496560, 470660, 446260, 423270, 401590, 381150, 361870, 343680,
-  326500, 310290, 294980, 280520, 266850, 253920, 241700, 230130, 219180, 208820,
-  199010, 189710, 180900, 172550, 164630, 157120, 149990, 143230, 136810, 130720,
+  3364790, 3149040, 2948480, 2761940, 2588380, 2426810, 2276320,
+2136100, 2005390, 1883490,
+  1769740, 1663560, 1564410, 1471770, 1385180, 1304210, 1228470,
+1157590, 1091220, 1029060,
+  970810, 916210, 865010, 816980, 771900, 729570, 689820, 652460,
+617360, 584340,
+  553290, 524070, 496560, 470660, 446260, 423270, 401590, 381150,
+361870, 343680,
+  326500, 310290, 294980, 280520, 266850, 253920, 241700, 230130,
+219180, 208820,
+  199010, 189710, 180900, 172550, 164630, 157120, 149990, 143230,
+136810, 130720,
   124930, 119420, 114190, 109220, 104500, 100000, 95720, 91650, 87770, 84080,
   80570, 77220, 74020, 70980, 68080, 65310, 62670, 60150, 57750, 55450,
   53260, 51170, 49170, 47250, 45430, 43680, 42010, 40410, 38880, 37420,
@@ -78,12 +84,13 @@ double TableLookup(
     if (searchValue >= lookupTable[i])
       break;
   }
-  
+
   const int high_val = lookupTable[i ==  0 ? i : i - 1];
   const int low_val  = lookupTable[i  < sz ? i : i - 1];
   const double temperature
     = static_cast<double>(i + startValue)
-    - (static_cast<double>(searchValue - low_val) / static_cast<double>(high_val - low_val));
+    - (static_cast<double>(searchValue - low_val) /
+static_cast<double>(high_val - low_val));
   return temperature;
 }
 
@@ -101,11 +108,12 @@ float TableLookup(
     if (searchValue >= lookupTable[i]) break;
     //if (searchValue >= pgm_read_word_near(lookupTable + i))
   }
-  
+
   if (i > 0) {
     unsigned long high_val = pgm_read_word_near(lookupTable + i - 1);
     unsigned long low_val = pgm_read_word_near(lookupTable + i);
-    return i + startValue - (float)(searchValue - low_val) / (float)(high_val - low_val);
+    return i + startValue - (float)(searchValue - low_val) /
+(float)(high_val - low_val);
   } else {
     return startValue;
   }
@@ -118,14 +126,17 @@ CLidThermistor::CLidThermistor(const int pin_lid_thermistor)
   : iTemp(0.0),
     m_pin_lid_thermistor(pin_lid_thermistor)
 {
-  Assert(m_pin_lid_thermistor >= 0 && "An Arduino pin number is zero at least");
-  Assert(m_pin_lid_thermistor <= 21 && "An Arduino Uno only has 21 pins");
+  assert(m_pin_lid_thermistor >= 0 && "An Arduino pin number is zero at least");
+  assert(m_pin_lid_thermistor <= 21 && "An Arduino Uno only has 21 pins");
 }
 //------------------------------------------------------------------------------
 void CLidThermistor::ReadTemp() {
-  unsigned long voltage_mv = (unsigned long)analogRead(m_pin_lid_thermistor) * 5000 / 1024;
+  unsigned long voltage_mv = (unsigned
+long)analogRead(m_pin_lid_thermistor) * 5000 / 1024;
   unsigned long resistance = voltage_mv * 2200 / (5000 - voltage_mv);
-  iTemp = TableLookup(LID_RESISTANCE_TABLE, sizeof(LID_RESISTANCE_TABLE) / sizeof(LID_RESISTANCE_TABLE[0]), 0, resistance);
+  iTemp = TableLookup(LID_RESISTANCE_TABLE,
+sizeof(LID_RESISTANCE_TABLE) / sizeof(LID_RESISTANCE_TABLE[0]), 0,
+resistance);
 }
 
 ////////////////////////////////////////////////////////////////////
@@ -140,7 +151,7 @@ CPlateThermistor::CPlateThermistor(const int pin_plate_thermistor)
   pinMode(m_pin_plate_thermistor, INPUT);
   //pinMode(SPICLOCK,OUTPUT);
   pinMode(SLAVESELECT,OUTPUT);
-  digitalWrite(SLAVESELECT,HIGH); //disable device 
+  digitalWrite(SLAVESELECT,HIGH); //disable device
 }
 //------------------------------------------------------------------------------
 void CPlateThermistor::ReadTemp() {
@@ -148,27 +159,33 @@ void CPlateThermistor::ReadTemp() {
 
   //read data
   while(digitalRead(m_pin_plate_thermistor)) {}
-  
+
   uint8_t spiBuf[4];
   memset(spiBuf, 0, sizeof(spiBuf));
 
-  digitalWrite(SLAVESELECT, LOW);  
+  digitalWrite(SLAVESELECT, LOW);
   for(int i = 0; i < 4; i++)
     spiBuf[i] = SPITransfer(0xFF);
 
-  unsigned long conv = (((unsigned long)spiBuf[3] >> 7) & 0x01) + ((unsigned long)spiBuf[2] << 1) + ((unsigned long)spiBuf[1] << 9) + (((unsigned long)spiBuf[0] & 0x1F) << 17); //((spiBuf[0] & 0x1F) << 16) + (spiBuf[1] << 8) + spiBuf[2];
-  
+  unsigned long conv = (((unsigned long)spiBuf[3] >> 7) & 0x01) +
+((unsigned long)spiBuf[2] << 1) + ((unsigned long)spiBuf[1] << 9) +
+(((unsigned long)spiBuf[0] & 0x1F) << 17); //((spiBuf[0] & 0x1F) <<
+16) + (spiBuf[1] << 8) + spiBuf[2];
+
   unsigned long adcDivisor = 0x1FFFFF;
   float voltage = (float)conv * 5.0 / adcDivisor;
 
   //unsigned int convHigh = (conv >> 16);
-  
+
   digitalWrite(SLAVESELECT, HIGH);
-  
+
   unsigned long voltage_mv = voltage * 1000;
-  unsigned long resistance = voltage_mv * 22000 / (5000 - voltage_mv); // in hecto ohms
- 
-  iTemp = TableLookup(PLATE_RESISTANCE_TABLE, sizeof(PLATE_RESISTANCE_TABLE) / sizeof(PLATE_RESISTANCE_TABLE[0]), -40, resistance);
+  unsigned long resistance = voltage_mv * 22000 / (5000 - voltage_mv);
+// in hecto ohms
+
+  iTemp = TableLookup(PLATE_RESISTANCE_TABLE,
+sizeof(PLATE_RESISTANCE_TABLE) / sizeof(PLATE_RESISTANCE_TABLE[0]),
+-40, resistance);
 }
 //------------------------------------------------------------------------------
 char CPlateThermistor::SPITransfer(volatile char data) {
