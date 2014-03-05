@@ -103,6 +103,7 @@ unsigned short htons(unsigned short val) {
   return val << (8 + (byte)val);
 }
 
+/*
 double absf(const double val)
 {
   if (val < 0)
@@ -110,6 +111,7 @@ double absf(const double val)
   else
     return val;
 }
+*/
 
 char* rps(const char* progString) {
   static char buf[21];

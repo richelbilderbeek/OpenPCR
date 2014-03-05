@@ -39,3 +39,17 @@ DisplayParameters::DisplayParameters(
   Assert(m_pin_v0 >= 0 && "Pin V0 has at least an index of zero");
   Trace("End of Display::Display")
 }
+
+bool operator==(const DisplayParameters& lhs, const DisplayParameters& rhs)
+{
+  return
+       lhs.m_lcd_ncols == rhs.m_lcd_ncols
+    && lhs.m_lcd_nrows == rhs.m_lcd_nrows
+    && lhs.m_pin_rs    == rhs.m_pin_rs
+    && lhs.m_pin_e     == rhs.m_pin_e
+    && lhs.m_pin_d4    == rhs.m_pin_d4
+    && lhs.m_pin_d5    == rhs.m_pin_d5
+    && lhs.m_pin_d6    == rhs.m_pin_d6
+    && lhs.m_pin_d7    == rhs.m_pin_d7
+    && lhs.m_pin_v0    == lhs.m_pin_v0;
+}

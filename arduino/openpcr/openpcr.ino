@@ -50,7 +50,7 @@ void setup()
 
   const DisplayParameters display_parameters(
     16, //lcd_ncols
-    1,  //lcd_nrows ;
+    2,  //lcd_nrows ;
     2,  //lcd_pin_rs =  Arduino pin that connects to R/S pin of LCD display
     3,  //lcd_pin_e  =  Arduino pin that connects to E   pin of LCD display
     4,  //lcd_pin_d4 =  Arduino pin that connects to D4  pin of LCD display

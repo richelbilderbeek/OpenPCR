@@ -16,17 +16,24 @@
  *  the OpenPCR control software.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "arduinotrace.h"
 #include "pcr_includes.h"
 #include "pid.h"
 
 ////////////////////////////////////////////////////////////////////
 // Class CPIDController
-CPIDController::CPIDController(const SPIDTuning* pGainSchedule, int minOutput, int maxOutput):
-  ipGainSchedule(pGainSchedule),
-  iMinOutput(minOutput),
-  iMaxOutput(maxOutput),
-  iIntegrator(0),
-  iPreviousError(0) {
+CPIDController::CPIDController(
+    const SPIDTuning * const pGainSchedule,
+    const int minOutput,
+    const int maxOutput
+  )
+  : ipGainSchedule(pGainSchedule),
+    iMinOutput(minOutput),
+    iMaxOutput(maxOutput),
+    iIntegrator(0),
+    iPreviousError(0)
+{
+  Trace("CPIDController::CPIDController");
 }
 //------------------------------------------------------------------------------
 double CPIDController::Compute(double target, double currentValue) {

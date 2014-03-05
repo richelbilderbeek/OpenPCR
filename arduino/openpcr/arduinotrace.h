@@ -11,7 +11,7 @@
   {                     \
     Serial.print(#x);   \
     Serial.print("\n"); \
-    delay(100);         \
+    delay(1000);        \
   }
 
 #endif

@@ -16,6 +16,10 @@
  *  the OpenPCR control software.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <math.h>
+#include <avr/io.h>
+#include <avr/pgmspace.h>
+
 #include "pcr_includes.h"
 #include "thermocycler.h"
 
@@ -27,8 +31,6 @@
 #include "serialcontrol.h"
 #include "../Wire/Wire.h"
 
-#include <avr/io.h>
-#include <avr/pgmspace.h>
 
 //constants
   
@@ -98,7 +100,7 @@ Thermocycler::Thermocycler(
   :
     m_current_step(NULL),
     m_cycle_start_time(0),
-    m_display(new Display(display_parameters)),
+    m_display(Display::GetInstance(display_parameters)),
     m_display_cycle(NULL),
     m_is_ramping(true),
     m_is_restarted(is_restarted),
@@ -278,7 +280,7 @@ void Thermocycler::Loop()
         //eta updates
         if (m_current_step->GetRampDurationS() == 0) {
           //fast ramp
-          m_elapsed_fast_ramp_degrees += absf(GetPlateTemp() - m_ramp_start_temp);
+          m_elapsed_fast_ramp_degrees += fabs(GetPlateTemp() - m_ramp_start_temp);
           m_total_elapsed_fast_ramp_duration_ms += millis() - m_ramp_start_time;
         }
         
@@ -347,7 +349,7 @@ void Thermocycler::SetPlateControlStrategy() {
   if (InControlledRamp())
     return;
     
-  if (absf(m_target_plate_temp - GetPlateTemp()) >= PLATE_BANGBANG_THRESHOLD && !InControlledRamp()) {
+  if (fabs(m_target_plate_temp - GetPlateTemp()) >= PLATE_BANGBANG_THRESHOLD && !InControlledRamp()) {
     m_plate_control_mode = EBangBang;
     m_plate_pid->SetMode(MANUAL);
   } else {
@@ -396,7 +398,7 @@ void Thermocycler::ControlPeltier() {
   
   if (m_program_state == ERunning || (m_program_state == EComplete && m_current_step != NULL)) {
     // Check whether we are nearing target and should switch to PID control
-    if (m_plate_control_mode == EBangBang && absf(m_target_plate_temp - GetPlateTemp()) < PLATE_BANGBANG_THRESHOLD) {
+    if (m_plate_control_mode == EBangBang && fabs(m_target_plate_temp - GetPlateTemp()) < PLATE_BANGBANG_THRESHOLD) {
       m_plate_control_mode = EPIDPlate;
       m_plate_pid->SetMode(AUTOMATIC);
       m_plate_pid->ResetI();
@@ -453,7 +455,7 @@ void Thermocycler::PreprocessProgram() {
   m_program->BeginIteration();
   while ((pCurrentStep = m_program->GetNextStep()) && !pCurrentStep->IsFinal()) {
     //validate ramp
-    if (pPreviousStep != NULL && pCurrentStep->GetRampDurationS() * 1000 < absf(pCurrentStep->GetTemp() - pPreviousStep->GetTemp()) * PLATE_FAST_RAMP_THRESHOLD_MS) {
+    if (pPreviousStep != NULL && pCurrentStep->GetRampDurationS() * 1000 < fabs(pCurrentStep->GetTemp() - pPreviousStep->GetTemp()) * PLATE_FAST_RAMP_THRESHOLD_MS) {
       //cannot ramp that fast, ignored set ramp
       pCurrentStep->SetRampDurationS(0);
     }
@@ -468,7 +470,7 @@ void Thermocycler::PreprocessProgram() {
     } else {
       //fast ramp
       double previousTemp = pPreviousStep ? pPreviousStep->GetTemp() : GetPlateTemp();
-      m_program_fast_ramp_degrees += absf(previousTemp - pCurrentStep->GetTemp()) - CYCLE_START_TOLERANCE;
+      m_program_fast_ramp_degrees += fabs(previousTemp - pCurrentStep->GetTemp()) - CYCLE_START_TOLERANCE;
     }
     
     pPreviousStep = pCurrentStep;

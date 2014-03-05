@@ -9,6 +9,7 @@ DEFINES += __AVR_ATmega328__
 DEFINES += "F_CPU=100000000"
 #QMAKE_CFLAGS += -Wattributes
 
+#QMAKE_CXXFLAGS += -Wall -Wextra -Werror
 
 
 INCLUDEPATH += \

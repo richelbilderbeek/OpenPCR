@@ -26,6 +26,8 @@
 
 const int RESET_INTERVAL = 30000; //ms
 
+Display * Display::m_instance = 0;
+
 Display::Display(
     const DisplayParameters& parameters
   )
@@ -54,11 +56,24 @@ Display::Display(
     m_parameters.m_pin_v0,
     m_contrast
   );
+  Trace("~Display::Display");
 }
 
 void Display::Clear()
 {
   m_prev_state = Thermocycler::EClear;
+}
+
+Display * Display::GetInstance(const DisplayParameters& parameters)
+{
+  Trace("Display::GetInstance");
+  if (!m_instance)
+  {
+    m_instance = new Display(parameters);
+  }
+  Assert(m_instance);
+  Assert(m_instance->GetParameters() == parameters);
+  return m_instance;
 }
 
 void Display::SetContrast(const int contrast)

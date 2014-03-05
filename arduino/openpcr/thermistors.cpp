@@ -16,7 +16,7 @@
  *  the OpenPCR control software.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <assert.h>
+#include "arduinoassert.h"
 #include "pcr_includes.h"
 #include "thermistors.h"
 
@@ -126,8 +126,8 @@ CLidThermistor::CLidThermistor(const int pin_lid_thermistor)
   : iTemp(0.0),
     m_pin_lid_thermistor(pin_lid_thermistor)
 {
-  assert(m_pin_lid_thermistor >= 0 && "An Arduino pin number is zero at least");
-  assert(m_pin_lid_thermistor <= 21 && "An Arduino Uno only has 21 pins");
+  Assert(m_pin_lid_thermistor >= 0 && "An Arduino pin number is zero at least");
+  Assert(m_pin_lid_thermistor <= 21 && "An Arduino Uno only has 21 pins");
 }
 //------------------------------------------------------------------------------
 void CLidThermistor::ReadTemp() {
@@ -167,10 +167,10 @@ void CPlateThermistor::ReadTemp() {
   for(int i = 0; i < 4; i++)
     spiBuf[i] = SPITransfer(0xFF);
 
-  unsigned long conv = (((unsigned long)spiBuf[3] >> 7) & 0x01) +
-((unsigned long)spiBuf[2] << 1) + ((unsigned long)spiBuf[1] << 9) +
-(((unsigned long)spiBuf[0] & 0x1F) << 17); //((spiBuf[0] & 0x1F) <<
-16) + (spiBuf[1] << 8) + spiBuf[2];
+  unsigned long conv = (((unsigned long)spiBuf[3] >> 7) & 0x01)
+    + ((unsigned long)spiBuf[2] << 1) + ((unsigned long)spiBuf[1] << 9)
+    + (((unsigned long)spiBuf[0] & 0x1F) << 17);
+  //((spiBuf[0] & 0x1F) << 16) + (spiBuf[1] << 8) + spiBuf[2];
 
   unsigned long adcDivisor = 0x1FFFFF;
   float voltage = (float)conv * 5.0 / adcDivisor;
@@ -181,11 +181,10 @@ void CPlateThermistor::ReadTemp() {
 
   unsigned long voltage_mv = voltage * 1000;
   unsigned long resistance = voltage_mv * 22000 / (5000 - voltage_mv);
-// in hecto ohms
+  // in hecto ohms
 
   iTemp = TableLookup(PLATE_RESISTANCE_TABLE,
-sizeof(PLATE_RESISTANCE_TABLE) / sizeof(PLATE_RESISTANCE_TABLE[0]),
--40, resistance);
+  sizeof(PLATE_RESISTANCE_TABLE) / sizeof(PLATE_RESISTANCE_TABLE[0]),-40, resistance);
 }
 //------------------------------------------------------------------------------
 char CPlateThermistor::SPITransfer(volatile char data) {

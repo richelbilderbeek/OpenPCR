@@ -27,7 +27,11 @@ struct SPIDTuning {
 // Class CPIDController
 class CPIDController {
 public:
-  CPIDController(const SPIDTuning* pGainSchedule, int minOutput, int maxOutput);
+  CPIDController(
+    const SPIDTuning * const pGainSchedule,
+    const int minOutput,
+    const int maxOutput
+  );
  
   //accessors
   double GetIntegrator() const { return iIntegrator; }
@@ -40,8 +44,9 @@ private:
   void LatchValue(double* pValue, double minValue, double maxValue);
   
 private:
-  const SPIDTuning* ipGainSchedule;
-  int iMinOutput, iMaxOutput;
+  const SPIDTuning* const ipGainSchedule;
+  const int iMinOutput;
+  const int iMaxOutput;
   double iPreviousError;
   double iIntegrator;
 };

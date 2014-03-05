@@ -30,14 +30,16 @@ class Cycle;
 ///Display     |9|9|degree|C|up or down arrow| |9|8|/|9|9| |9|:|5|9|
 ///Description |Current     |Heating/cooling | Steps left  | Time  |
 ///            |temperature |                |             | left  |
+///Display is a Singleton as there is always exactly one Display
 struct Display
 {
-  Display(
-    const DisplayParameters& parameters
-    );
+  static Display * GetInstance(const DisplayParameters& parameters);
   
   void Clear();
   int GetContrast() const { return m_contrast; }
+
+  const DisplayParameters& GetParameters() const { return m_parameters; }
+
   void SetContrast(const int contrast);
   void Update();
   
@@ -51,7 +53,13 @@ private:
   );
   
 private:
+  Display(const DisplayParameters& parameters);
+
   int m_contrast;
+
+  ///The one and only instance of Display
+  static Display * m_instance;
+
   LiquidCrystal m_lcd;
   const DisplayParameters m_parameters;
   int m_prev_reset;

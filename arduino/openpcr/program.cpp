@@ -16,6 +16,7 @@
  *  the OpenPCR control software.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "arduinotrace.h"
 #include "pcr_includes.h"
 #include "program.h"
 
@@ -103,10 +104,12 @@ void Cycle::RestartCycle() {
     iComponents[i]->BeginIteration();
 }
 
-void CommandParser::ParseCommand(SCommand& command, char* pCommandBuf) {
+void CommandParser::ParseCommand(SCommand& command, char* pCommandBuf)
+{
+  Trace("CommandParser::ParseCommand");
   char* pValue;
   memset(&command, NULL, sizeof(command));
-  char buf[32];
+  //char buf[32];
 
   gpThermocycler->Stop(); //need to stop here to reset program pools
     

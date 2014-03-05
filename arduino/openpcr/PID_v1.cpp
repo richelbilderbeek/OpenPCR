@@ -4,31 +4,42 @@
  *
  * This Code is licensed under a Creative Commons Attribution-ShareAlike 3.0 Unported License.
  **********************************************************************************************/
-
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Weffc++"
+#pragma GCC diagnostic ignored "-Wunused-local-typedefs"
+//#pragma GCC diagnostic ignored "-Wunused-variables"
+#pragma GCC diagnostic ignored "-Wattributes"
 #include <Arduino.h>
 #include "PID_v1.h"
+#pragma GCC diagnostic pop
 
 /*Constructor (...)*********************************************************
  *    The parameters specified here are those for for which we can't set up 
  *    reliable defaults, so we need to have the user set them.
  ***************************************************************************/
-PID::PID(double* Input, double* Output, double* Setpoint,
-        double Kp, double Ki, double Kd, int ControllerDirection)
+PID::PID(
+  double * const input,
+  double * const Output,
+  double * const Setpoint,
+  const double Kp,
+  const double Ki,
+  const double Kd,
+  const int ControllerDirection
+  )
+  : m_input(input),
+    m_setpoint(Setpoint)
 {
-        PID::SetOutputLimits(0, 255);                                //default output limit corresponds to 
-                                                                                                //the arduino pwm limits
+  PID::SetOutputLimits(0, 255); //default output limit corresponds to
+                                //the arduino pwm limits
 
-    SampleTime = 100;                                                        //default Controller Sample Time is 0.1 seconds
+  SampleTime = 100; //default Controller Sample Time is 0.1 seconds
 
-    PID::SetControllerDirection(ControllerDirection);
-    PID::SetTunings(Kp, Ki, Kd);
+  PID::SetControllerDirection(ControllerDirection);
+  PID::SetTunings(Kp, Ki, Kd);
 
-    lastTime = millis()-SampleTime;                                
-    inAuto = false;
-    myOutput = Output;
-    myInput = Input;
-    mySetpoint = Setpoint;
-                
+  lastTime = millis()-SampleTime;
+  inAuto = false;
+  myOutput = Output;
 }
  
  
@@ -45,8 +56,8 @@ void PID::Compute()
    if(timeChange>=SampleTime)
    {
       /*Compute all the working error variables*/
-      double input = *myInput;
-      double error = *mySetpoint - input;
+      double input = *m_input;
+      double error = *m_setpoint - input;
       ITerm += (ki * error);
 
       if (ITerm > outMax)
@@ -156,7 +167,7 @@ void PID::SetMode(int Mode)
 void PID::Initialize()
 {
    ITerm = *myOutput;
-   lastInput = *myInput;
+   lastInput = *m_input;
    lastTime = millis() -SampleTime;
    if(ITerm > outMax) ITerm = outMax;
    else if(ITerm < outMin) ITerm = outMin;

@@ -27,4 +27,6 @@ struct DisplayParameters
 
 };
 
+bool operator==(const DisplayParameters& lhs, const DisplayParameters& rhs);
+
 #endif // DISPLAYPARAMETERS_H

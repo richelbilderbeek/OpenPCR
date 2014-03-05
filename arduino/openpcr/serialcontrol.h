@@ -21,8 +21,8 @@
 
 #include "thermocycler.h"
 
-//#define START_CODE    0xFF
-//#define ESCAPE_CODE   0xFE
+#define START_CODE    0xFF
+#define ESCAPE_CODE   0xFE
 
 class Display;
 class ProgramComponent;
@@ -36,6 +36,17 @@ typedef enum {
     STATUS_RESP    = 0x80
 } PACKET_TYPE;
 
+struct PCPPacket {
+  PCPPacket(PACKET_TYPE type)
+  : startCode(START_CODE)
+  , length(0)
+  , eType(type)
+  {}
+
+  uint8_t startCode;
+  uint16_t length;
+  uint8_t eType; //lower 4 bits are used for seq
+};
 
 class SerialControl {
 public:

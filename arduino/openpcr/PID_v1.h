@@ -1,22 +1,24 @@
 #ifndef PID_v1_h
 #define PID_v1_h
-#define LIBRARY_VERSION        1.0.0
+#define LIBRARY_VERSION 1.0.0
 
-class PID
+struct PID
 {
-
-
-  public:
-
   //Constants used in some of the functions below
   #define AUTOMATIC        1
   #define MANUAL        0
   #define DIRECT  0
   #define REVERSE  1
 
-  //commonly used functions **************************************************************************
-  PID(double*, double*, double*,        // * constructor.  links the PID to the Input, Output, and
-      double, double, double, int);     //   Setpoint.  Initial tuning parameters are also set here
+  //Setpoint.  Initial tuning parameters are also set here
+  PID(
+    double * const input,
+    double * const Output,
+    double * const Setpoint,
+    const double Kp,
+    const double Ki,
+    const double Kd,
+    const int ControllerDirection);
 
   void SetMode(int Mode);               // * sets PID to either Manual (0) or Auto (non-0)
 
@@ -66,13 +68,14 @@ class PID
 
   int controllerDirection;
 
-  double *myInput;    // * Pointers to the Input, Output, and Setpoint variables
-  double *myOutput;   //   This creates a hard link between the variables and the
-  double *mySetpoint; //   PID, freeing the user from having to constantly tell us
-                      //   what these values are.  with pointers we'll just know.
+  double * const m_input;    // * Pointers to the Input, Output, and Setpoint variables
+  double * myOutput;         //   This creates a hard link between the variables and the
+  double * const m_setpoint; // PID, freeing the user from having to constantly tell us
+                             //   what these values are.  with pointers we'll just know.
 
   unsigned long lastTime;
-  double ITerm, lastInput;
+  double ITerm;
+  double lastInput;
 
   int SampleTime;
   double outMin, outMax;

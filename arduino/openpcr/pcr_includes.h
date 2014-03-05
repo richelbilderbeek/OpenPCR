@@ -55,8 +55,9 @@ enum PcrStatus {
 void sprintFloat(char* str, float val, int decimalDigits, boolean pad);
 unsigned short htons(unsigned short val);
 
-///Obtain the absolute value of a double
-double absf(const double val);
+//Obtain the absolute value of a double
+//Use standard C library fabs instead
+//double absf(const double val);
 
 char* rps(const char* progString);
 
